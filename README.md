@@ -1,3 +1,20 @@
+> [!IMPORTANT]
+> **Personal fork branch (`personal`)**: not the official Saber. For the real app, see
+> [saber-notes/saber](https://github.com/saber-notes/saber).
+>
+> Changes on top of upstream `main`:
+> - **Invisible dots fix:** pen taps on Android stylus devices now draw a dot. The fix lives in a patched
+>   [`perfect_freehand`](https://github.com/Delici0u-s/perfect-freehand-dart/tree/fix/stationary-dots),
+>   used through a path override in `pubspec.yaml`. Building needs that repo cloned next to this one
+>   as `../perfect-freehand-dart`, on branch `fix/stationary-dots`.
+> - Merged open upstream pull requests:
+>   [#1829](https://github.com/saber-notes/saber/pull/1829) (move selections between pages) and
+>   [#1823](https://github.com/saber-notes/saber/pull/1823) (prevent adding PDFs as images).
+>
+> **AI assistance:** the investigation, the `perfect_freehand` fix and this branch's setup were done
+> with help from Claude (Anthropic). Code on this branch is for personal use and isn't submitted to
+> Saber, whose contributing guidelines don't accept AI-generated code.
+
 # <img src="https://github.com/saber-notes/saber/raw/main/assets/icon/icon.png" width="30" height="30" alt="Logo"> Saber
 
 [<img src='https://github.com/saber-notes/saber/blob/main/assets_raw/badges/google-play-badge.svg'
