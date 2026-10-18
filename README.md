@@ -1,23 +1,45 @@
 > [!IMPORTANT]
 > **Personal fork** (`main` and `personal` branches): not the official Saber. For the real app, see
-> [saber-notes/saber](https://github.com/saber-notes/saber).
+> [saber-notes/saber](https://github.com/saber-notes/saber). I just applied some pull requests/features/https://github.com/steveruizok/perfect-freehand-dart/pull/27.
 >
-> Changes on top of upstream `main`:
-> - **Invisible dots fix:** pen taps on Android stylus devices now draw a dot. The fix lives in a patched
->   [`perfect_freehand`](https://github.com/Delici0u-s/perfect-freehand-dart/tree/fix/stationary-dots),
->   which `pubspec.yaml` overrides as a git dependency (`flutter pub get` fetches it).
+> **Fixes**
+> - **Invisible dots:** pen taps on Android stylus devices now draw a dot. Fixed in
+>   [`perfect_freehand`](https://github.com/Delici0u-s/perfect-freehand-dart/tree/fix/stationary-dots)
+>   (upstream PR [#27](https://github.com/steveruizok/perfect-freehand-dart/pull/27)), which
+>   `pubspec.yaml` overrides as a git dependency. Remove the override once a release includes it.
+> - **Sync:** a save made while that note was uploading is now uploaded too (it used to be dropped).
+>
+> **Features**
+> - **Sync while open:** checks Nextcloud for changes every minute (setting *Check for changes*), when the
+>   app is resumed and, with *Sync on save*, after each save. The open note reloads when a newer version
+>   arrives and it has no unsaved changes.
+> - **Selection:** one selection button; tap it again to pick lasso or box selection.
+>   The selection and eraser buttons show the active mode's icon.
+> - **Eraser outline:** a dashed circle shows the eraser's size while erasing.
+> - **Crop images:** *Crop* in an image's long-press menu (pictures only). Crops the pixels, so the result
+>   looks the same in other Saber versions; undo restores the original.
+> - **Hold to shape:** hold any pen still at the end of a stroke (setting *Hold to shape*, default 1s)
+>   to turn it into a line, rectangle, circle, triangle or star.
+> - **Real size:** a HUD button (top left, next to the zoom lock) zooms so an A4-wide page shows at its
+>   physical size. Uses Android's screen density, or the *Screen density* setting.
+> - **Paper spacings:** background line height is shown in mm, with presets (5, 6, 7, 8, 10 mm,
+>   e.g. 5 mm squared paper). Spacing is a whole number of page units, so 5 mm is 5.04 mm.
+> - **Finer settings:** line height and highlighter size step by 1; faster options for auto-save (2s)
+>   and shape recognition (0.25s).
 > - **Build script:** `scripts/dev.sh android|linux [build|install|run] [--debug]`. Machine-specific
->   paths go in `scripts/dev.local.env` (see the script's header).
-> - Merged open upstream pull requests:
->   - [#1829](https://github.com/saber-notes/saber/pull/1829): move selections between pages
->   - [#1823](https://github.com/saber-notes/saber/pull/1823): prevent adding PDFs as images
->   - [#1718](https://github.com/saber-notes/saber/pull/1718): box selection tool (without the PR's
->     colour bar restyle), adapted to #1829
->   - [#1761](https://github.com/saber-notes/saber/pull/1761): area eraser
+>   paths go in `scripts/dev.local.env` (see the script's header). Android installs keep app data and
+>   refuse to replace a differently signed (e.g. Play Store) install.
 >
-> **AI assistance:** the investigation, the `perfect_freehand` fix and this branch's setup were done
-> with help from Claude (Anthropic). Code on this branch is for personal use and isn't submitted to
-> Saber, whose contributing guidelines don't accept AI-generated code.
+> **Merged upstream pull requests**
+> - [#1829](https://github.com/saber-notes/saber/pull/1829): move selections between pages
+> - [#1823](https://github.com/saber-notes/saber/pull/1823): prevent adding PDFs as images
+> - [#1718](https://github.com/saber-notes/saber/pull/1718): box selection tool (without the PR's
+>   colour bar restyle), adapted to #1829
+> - [#1761](https://github.com/saber-notes/saber/pull/1761): area eraser
+>
+> **AI assistance:** the investigation, fixes and features on this branch were made with help from
+> Claude (Anthropic). Code on this branch is for personal use and isn't submitted to Saber, whose
+> contributing guidelines don't accept AI-generated code.
 
 # <img src="https://github.com/saber-notes/saber/raw/main/assets/icon/icon.png" width="30" height="30" alt="Logo"> Saber
 
