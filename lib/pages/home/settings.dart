@@ -518,6 +518,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   icon: Icons.save,
                   pref: stows.autosaveDelay,
                   options: [
+                    const ToggleButtonsOption(2000, Text('2s')),
                     const ToggleButtonsOption(5000, Text('5s')),
                     const ToggleButtonsOption(10000, Text('10s')),
                     ToggleButtonsOption(-1, Text(t.settings.autosaveDisabled)),
@@ -547,6 +548,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   icon: FontAwesomeIcons.shapes,
                   pref: stows.shapeRecognitionDelay,
                   options: [
+                    const ToggleButtonsOption(250, Text('0.25s')),
                     const ToggleButtonsOption(500, Text('0.5s')),
                     const ToggleButtonsOption(1000, Text('1s')),
                     ToggleButtonsOption(
