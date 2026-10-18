@@ -55,6 +55,7 @@ class CanvasPainter extends CustomPainter {
     _drawCurrentStroke(canvas);
     _drawDetectedShape(canvas);
     _drawSelection(canvas);
+    _drawEraserOutline(canvas);
     _drawPageIndicator(canvas, size);
   }
 
@@ -246,6 +247,29 @@ class CanvasPainter extends CustomPainter {
       Paint()
         ..color = primaryColor
         ..strokeWidth = 3
+        ..style = .stroke,
+    );
+  }
+
+  /// Dash length and line width of the eraser outline, in screen pixels.
+  static const double _eraserOutlineDash = 4;
+  static const _eraserOutlineWidth = 1.5;
+
+  void _drawEraserOutline(Canvas canvas) {
+    final outline = page.eraserOutline;
+    if (outline == null) return;
+
+    final dash = _eraserOutlineDash / currentScale;
+    canvas.drawPath(
+      dashPath(
+        Path()..addOval(
+          Rect.fromCircle(center: outline.center, radius: outline.radius),
+        ),
+        dashArray: CircularIntervalList([dash, dash]),
+      ),
+      Paint()
+        ..color = primaryColor
+        ..strokeWidth = _eraserOutlineWidth / currentScale
         ..style = .stroke,
     );
   }

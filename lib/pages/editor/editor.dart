@@ -600,6 +600,14 @@ class EditorState extends State<Editor> {
   }
   static const changePageThreshold = 50.0;
 
+  /// Outlines the eraser on [page] at [center], or hides it if null.
+  void _setEraserOutline(EditorPage page, Offset? center) {
+    page.eraserOutline = center == null
+        ? null
+        : (center: center, radius: (currentTool as Eraser).size);
+    page.redrawStrokes();
+  }
+
   void onDrawStart(ScaleStartDetails details) {
     final page = coreInfo.pages[dragPageIndex!];
     final position = page.renderBox!.globalToLocal(details.focalPoint);
@@ -613,6 +621,7 @@ class EditorState extends State<Editor> {
         currentPressure,
       );
     } else if (currentTool is Eraser) {
+      _setEraserOutline(page, position);
       for (final stroke in (currentTool as Eraser).checkForOverlappingStrokes(
         position,
         page.strokes,
@@ -666,7 +675,7 @@ class EditorState extends State<Editor> {
       )) {
         page.strokes.remove(stroke);
       }
-      page.redrawStrokes();
+      _setEraserOutline(page, position);
       removeExcessPages();
     } else if (currentTool is SelectLasso || currentTool is SelectBox) {
       final Select select = currentTool as Select;
@@ -827,6 +836,7 @@ class EditorState extends State<Editor> {
           ),
         );
       } else if (currentTool is Eraser) {
+        _setEraserOutline(page, null);
         final erased = (currentTool as Eraser).onDragEnd();
         if (stylusButtonWasPressed || stows.disableEraserAfterUse.value) {
           // restore previous tool

@@ -24,6 +24,10 @@ class EditorPage extends ChangeNotifier implements HasSize {
   @override
   final Size size;
 
+  /// The area the eraser covers while erasing on this page,
+  /// so the canvas can outline it. Null when not erasing.
+  ({Offset center, double radius})? eraserOutline;
+
   late final CanvasKey innerCanvasKey = CanvasKey();
   RenderBox? _renderBox;
   RenderBox? get renderBox {
