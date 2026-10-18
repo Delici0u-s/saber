@@ -13,7 +13,7 @@ import 'package:saber/data/editor/page.dart';
 import 'package:saber/data/extensions/color_extensions.dart';
 import 'package:saber/data/tools/highlighter.dart';
 import 'package:saber/data/tools/laser_pointer.dart';
-import 'package:saber/data/tools/shape_pen.dart';
+import 'package:saber/data/tools/pen.dart';
 
 class CanvasPainter extends CustomPainter {
   const new({
@@ -193,7 +193,7 @@ class CanvasPainter extends CustomPainter {
   }
 
   void _drawDetectedShape(Canvas canvas) {
-    final shape = ShapePen.detectedShape;
+    final shape = Pen.detectedShape;
     if (shape == null) return;
 
     final color = currentStroke?.color.withInversion(invert) ?? Colors.black;

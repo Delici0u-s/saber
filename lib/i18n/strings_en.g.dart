@@ -164,6 +164,9 @@ class Translations$settings$en {
 
 	/// en: 'Never'
 	String get shapeRecognitionDisabled => 'Never';
+
+	/// en: 'Off'
+	String get holdToShapeDisabled => 'Off';
 }
 
 // Path: logs
@@ -739,6 +742,9 @@ class Translations$settings$prefLabels$en {
 	/// en: 'Shape recognition delay'
 	String get shapeRecognitionDelay => 'Shape recognition delay';
 
+	/// en: 'Hold to shape'
+	String get holdToShape => 'Hold to shape';
+
 	/// en: 'Auto straighten lines'
 	String get autoStraightenLines => 'Auto straighten lines';
 
@@ -800,6 +806,9 @@ class Translations$settings$prefDescriptions$en {
 
 	/// en: 'How often to update the shape preview'
 	String get shapeRecognitionDelay => 'How often to update the shape preview';
+
+	/// en: 'Hold any pen still at the end of a stroke to turn it into a shape'
+	String get holdToShape => 'Hold any pen still at the end of a stroke to turn it into a shape';
 
 	/// en: 'Straightens long lines without having to use the shape pen'
 	String get autoStraightenLines => 'Straightens long lines without having to use the shape pen';

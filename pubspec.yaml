@@ -165,6 +165,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  fake_async: any # pinned by flutter_test
   integration_test:
     sdk: flutter
 

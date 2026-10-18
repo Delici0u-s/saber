@@ -198,6 +198,7 @@ class EditorState extends State<Editor> {
     _noteDownloadSubscription = syncer.downloader.transferStream.listen(
       _onFileDownloaded,
     );
+    Pen.onDetectedShapeChanged = _setState;
 
     super.initState();
   }
@@ -614,6 +615,7 @@ class EditorState extends State<Editor> {
       return false;
     }
   }
+
   static const changePageThreshold = 50.0;
 
   /// Outlines the eraser on [page] at [center], or hides it if null.
@@ -726,10 +728,10 @@ class EditorState extends State<Editor> {
         select.selectResult.path = select.selectResult.path.shift(offset);
 
         if (pageOffset != 0) {
-          offset = position - previousPosition; 
+          offset = position - previousPosition;
           selectionOffsetPage(pageOffset);
           dragPageIndex = onWhichPageIsFocalPoint(details.focalPoint);
-          
+
           if (dragPageIndex == null) {
             return;
           }
@@ -739,7 +741,7 @@ class EditorState extends State<Editor> {
           // Recalculate the offset as if the selection were always moving to one page. Important for undo/redo
           offset = Offset(
             offset.dx,
-            offset.dy - pageOffset * (page.size.height + changePageThreshold)
+            offset.dy - pageOffset * (page.size.height + changePageThreshold),
           );
           pageNew.redrawStrokes();
         }
@@ -778,7 +780,10 @@ class EditorState extends State<Editor> {
   }
 
   bool moveImageToPage(
-      EditorImage image, int pageIndexOrig, int pageIndexDest) {
+    EditorImage image,
+    int pageIndexOrig,
+    int pageIndexDest,
+  ) {
     if (pageIndexOrig == pageIndexDest ||
         pageIndexOrig == -1 ||
         pageIndexDest == -1) {
@@ -889,7 +894,7 @@ class EditorState extends State<Editor> {
               ),
             ),
           );
-          select.selectResult.pageIndexStart=select.selectResult.pageIndex;
+          select.selectResult.pageIndexStart = select.selectResult.pageIndex;
         } else {
           shouldSave = false;
           select.onDragEnd(page.strokes, page.images);
@@ -1372,7 +1377,7 @@ class EditorState extends State<Editor> {
             onMiscChange: autosaveAfterDelay,
             onLoad: () => setState(() {}),
             assetCache: coreInfo.assetCache,
-          )
+          ),
         );
       } else {
         images.add(
@@ -1387,7 +1392,7 @@ class EditorState extends State<Editor> {
             onMiscChange: autosaveAfterDelay,
             onLoad: () => setState(() {}),
             assetCache: coreInfo.assetCache,
-          )
+          ),
         );
       }
     }
@@ -2108,9 +2113,8 @@ class EditorState extends State<Editor> {
       textEditing: currentTool == Tool.textEditing,
       coreInfo: coreInfo,
       currentStroke: currentStroke,
-      currentStrokeDetectedShape:
-          currentTool is ShapePen && currentStroke != null
-          ? ShapePen.detectedShape
+      currentStrokeDetectedShape: currentStroke != null
+          ? Pen.detectedShape
           : null,
       currentSelection: () {
         final SelectResult selectResult;
@@ -2341,6 +2345,9 @@ class EditorState extends State<Editor> {
     _delayedSaveTimer?.cancel();
     _watchServerTimer?.cancel();
     unawaited(_noteDownloadSubscription?.cancel());
+    if (Pen.onDetectedShapeChanged == _setState) {
+      Pen.onDetectedShapeChanged = null;
+    }
     _lastSeenPointerCountTimer?.cancel();
 
     _removeKeybindings();

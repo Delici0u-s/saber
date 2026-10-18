@@ -127,6 +127,7 @@ settings:
     screenDpi: Screen density
     syncPullInterval: Check for changes
     shapeRecognitionDelay: Shape recognition delay
+    holdToShape: Hold to shape
     autoStraightenLines: Auto straighten lines
     customDataDir: Custom Saber folder
     sentry: Error reporting
@@ -149,6 +150,7 @@ settings:
     screenDpi: Pixels per inch used for 'real size' zoom. Auto uses the value reported by your device
     syncPullInterval: How often to check the server for changes while Saber is open (it always checks when opened)
     shapeRecognitionDelay: How often to update the shape preview
+    holdToShape: Hold any pen still at the end of a stroke to turn it into a shape
     autoStraightenLines: Straightens long lines without having to use the shape pen
     shouldAlwaysAlertForUpdates: Tell me about updates as soon as they're available
     sentry:
@@ -187,6 +189,7 @@ settings:
   syncPullDisabled: Never
   screenDpiAuto: Auto
   shapeRecognitionDisabled: Never
+  holdToShapeDisabled: Off
 logs:
   logs: Logs
   viewLogs: View logs

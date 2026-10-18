@@ -184,6 +184,13 @@ class Stows {
     60,
     volatile: !_isOnMainIsolate,
   );
+  /// How long (ms) to hold a pen still before its stroke becomes a shape,
+  /// or -1 to disable "hold to shape".
+  final holdToShapeDelay = PlainStow(
+    'holdToShapeDelay',
+    1000,
+    volatile: !_isOnMainIsolate,
+  );
   final shapeRecognitionDelay = PlainStow(
     'shapeRecognitionDelay',
     500,

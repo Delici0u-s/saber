@@ -572,6 +572,20 @@ class _SettingsPageState extends State<SettingsPage> {
                     ShapePen.debounceDuration = ShapePen.getDebounceFromPref();
                   },
                 ),
+                SettingsSelection(
+                  title: t.settings.prefLabels.holdToShape,
+                  subtitle: t.settings.prefDescriptions.holdToShape,
+                  icon: FontAwesomeIcons.shapes,
+                  pref: stows.holdToShapeDelay,
+                  options: [
+                    const ToggleButtonsOption(500, Text('0.5s')),
+                    const ToggleButtonsOption(1000, Text('1s')),
+                    ToggleButtonsOption(
+                      -1,
+                      Text(t.settings.holdToShapeDisabled),
+                    ),
+                  ],
+                ),
                 SettingsSwitch(
                   title: t.settings.prefLabels.autoStraightenLines,
                   subtitle: t.settings.prefDescriptions.autoStraightenLines,

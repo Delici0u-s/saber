@@ -2,10 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:logging/logging.dart';
-import 'package:one_dollar_unistroke_recognizer/one_dollar_unistroke_recognizer.dart';
-import 'package:saber/components/canvas/_circle_stroke.dart';
-import 'package:saber/components/canvas/_rectangle_stroke.dart';
 import 'package:saber/components/canvas/_stroke.dart';
 import 'package:saber/data/prefs.dart';
 import 'package:saber/data/tools/pen.dart';
@@ -25,13 +21,14 @@ class ShapePen extends Pen {
         toolId: .shapePen,
       );
 
-  static final log = Logger('ShapePen');
-
   static const shapePenIcon = FontAwesomeIcons.shapes;
 
-  static RecognizedUnistroke? detectedShape;
+  /// The shape pen previews shapes continuously instead.
+  @override
+  bool get holdsToShape => false;
+
   void _detectShape() {
-    detectedShape = Pen.currentStroke?.detectShape();
+    Pen.detectedShape = Pen.currentStroke?.detectShape();
   }
 
   static Timer? _detectShapeDebouncer;
@@ -62,60 +59,6 @@ class ShapePen extends Pen {
     _detectShapeDebouncer?.cancel();
     _detectShapeDebouncer = null;
     _detectShape();
-
-    final rawStroke = super.onDragEnd();
-    if (rawStroke == null) return null;
-    assert(rawStroke.options.isComplete == true);
-
-    final detectedShape = ShapePen.detectedShape;
-    ShapePen.detectedShape = null;
-
-    if (detectedShape == null) return rawStroke;
-
-    switch (detectedShape.name) {
-      case null:
-        log.info('Detected unknown shape');
-        return rawStroke;
-      case DefaultUnistrokeNames.line:
-        log.info('Detected line');
-        return rawStroke..convertToLine();
-      case DefaultUnistrokeNames.rectangle:
-        final rect = detectedShape.convertToRect();
-        log.info('Detected rectangle: $rect');
-        return RectangleStroke(
-          color: color,
-          pressureEnabled: pressureEnabled,
-          options: rawStroke.options,
-          pageIndex: rawStroke.pageIndex,
-          page: rawStroke.page,
-          toolId: toolId,
-          rect: rect,
-        );
-      case DefaultUnistrokeNames.circle:
-        final (center, radius) = detectedShape.convertToCircle();
-        log.info('Detected circle: c=$center, r=$radius');
-        return CircleStroke(
-          color: color,
-          pressureEnabled: pressureEnabled,
-          options: rawStroke.options,
-          pageIndex: rawStroke.pageIndex,
-          page: rawStroke.page,
-          toolId: toolId,
-          radius: radius,
-          center: center,
-        );
-      case DefaultUnistrokeNames.triangle:
-      case DefaultUnistrokeNames.star:
-        final polygon = detectedShape.convertToCanonicalPolygon();
-        log.info('Detected ${detectedShape.name}');
-        return Stroke(
-          color: color,
-          pressureEnabled: pressureEnabled,
-          options: rawStroke.options,
-          pageIndex: rawStroke.pageIndex,
-          page: rawStroke.page,
-          toolId: toolId,
-        )..addPoints(polygon);
-    }
+    return super.onDragEnd();
   }
 }
