@@ -194,9 +194,13 @@ dependency_overrides:
   # https://github.com/GregoryConrad/native_toolchain_rust/issues/103
   native_toolchain_rust: 1.0.4+0
 
-  # Personal branch only: local fix for invisible stationary dots.
+  # Personal fork only: fix for invisible stationary dots, until
+  # https://github.com/steveruizok/perfect-freehand-dart is released with it.
+  # Remove this override once Saber's perfect_freehand version includes the fix.
   perfect_freehand:
-    path: ../perfect-freehand-dart
+    git:
+      url: https://github.com/Delici0u-s/perfect-freehand-dart.git
+      ref: fix/stationary-dots
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

@@ -5,8 +5,9 @@
 > Changes on top of upstream `main`:
 > - **Invisible dots fix:** pen taps on Android stylus devices now draw a dot. The fix lives in a patched
 >   [`perfect_freehand`](https://github.com/Delici0u-s/perfect-freehand-dart/tree/fix/stationary-dots),
->   used through a path override in `pubspec.yaml`. Building needs that repo cloned next to this one
->   as `../perfect-freehand-dart`, on branch `fix/stationary-dots`.
+>   which `pubspec.yaml` overrides as a git dependency (`flutter pub get` fetches it).
+> - **Build script:** `scripts/dev.sh android|linux [build|install|run] [--debug]`. Machine-specific
+>   paths go in `scripts/dev.local.env` (see the script's header).
 > - Merged open upstream pull requests:
 >   - [#1829](https://github.com/saber-notes/saber/pull/1829): move selections between pages
 >   - [#1823](https://github.com/saber-notes/saber/pull/1823): prevent adding PDFs as images

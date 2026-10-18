@@ -1279,9 +1279,11 @@ packages:
   perfect_freehand:
     dependency: "direct main"
     description:
-      path: "../perfect-freehand-dart"
-      relative: true
-    source: path
+      path: "."
+      ref: "fix/stationary-dots"
+      resolved-ref: "640c91016d13bd94bfd847c5bb2a6e75f5ec705a"
+      url: "https://github.com/Delici0u-s/perfect-freehand-dart.git"
+    source: git
     version: "2.5.2+1"
   permission_handler:
     dependency: "direct main"

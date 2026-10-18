@@ -66,3 +66,6 @@ coverage/
 
 # temp files for fdroid pubspec.lock
 /tmpfdroid/
+
+# scripts/dev.sh machine-specific settings
+scripts/dev.local.env
