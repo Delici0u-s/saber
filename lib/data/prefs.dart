@@ -355,6 +355,10 @@ class Stows {
   /// The ranges offered for a background pattern's line height and thickness.
   static const lineHeightRange = (min: 20, max: 100);
   static const lineThicknessRange = (min: 1, max: 5);
+
+  /// Common paper line spacings in millimetres (e.g. 5mm squared paper),
+  /// offered as presets for a background pattern's line height.
+  static const standardLineSpacingsMm = [5.0, 6.0, 7.0, 8.0, 10.0];
   final lastLineHeight = PlainStow(
     'lastLineHeight',
     defaultLineHeight,

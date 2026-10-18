@@ -24,6 +24,13 @@ class EditorPage extends ChangeNotifier implements HasSize {
   /// The physical width that [defaultWidth] stands for: an A4 page.
   static const defaultWidthMm = 210.0;
 
+  /// Converts page units to millimetres on a default-sized page.
+  static double unitsToMm(num units) => units * defaultWidthMm / defaultWidth;
+
+  /// Converts millimetres to whole page units on a default-sized page.
+  static int mmToUnits(double mm) =>
+      (mm * defaultWidth / defaultWidthMm).round();
+
   @override
   final Size size;
 

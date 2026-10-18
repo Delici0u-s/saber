@@ -247,7 +247,10 @@ class _EditorBottomSheetState extends State<EditorBottomSheet> {
             ),
             Row(
               children: [
-                Text(widget.coreInfo.lineHeight.toString()),
+                Text(
+                  '${widget.coreInfo.lineHeight} '
+                  '(${EditorPage.unitsToMm(widget.coreInfo.lineHeight).toStringAsFixed(1)} mm)',
+                ),
                 Expanded(
                   child: Slider(
                     value: widget.coreInfo.lineHeight.toDouble(),
@@ -260,6 +263,22 @@ class _EditorBottomSheetState extends State<EditorBottomSheet> {
                     }),
                   ),
                 ),
+              ],
+            ),
+            Wrap(
+              spacing: 8,
+              children: [
+                for (final mm in Stows.standardLineSpacingsMm)
+                  if (EditorPage.mmToUnits(mm) case final units
+                      when units >= Stows.lineHeightRange.min &&
+                          units <= Stows.lineHeightRange.max)
+                    ChoiceChip(
+                      label: Text('${mm.toStringAsFixed(0)} mm'),
+                      selected: widget.coreInfo.lineHeight == units,
+                      onSelected: (_) => setState(() {
+                        widget.setLineHeight(units);
+                      }),
+                    ),
               ],
             ),
             Text(
