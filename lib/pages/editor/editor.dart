@@ -1691,8 +1691,14 @@ class EditorState extends State<Editor> {
           DynamicMaterialApp.isFullscreen &&
           !stows.editorToolbarShowInFullscreen.value,
       maintainState: true,
+      // Pad the screen edges the toolbar touches, but not the side facing the
+      // canvas: e.g. a bottom toolbar must not get the status bar's padding,
+      // which it otherwise does in fullscreen (without the app bar).
       child: SafeArea(
+        top: stows.editorToolbarAlignment.value != AxisDirection.down,
         bottom: stows.editorToolbarAlignment.value != AxisDirection.up,
+        left: stows.editorToolbarAlignment.value != AxisDirection.right,
+        right: stows.editorToolbarAlignment.value != AxisDirection.left,
         child: Toolbar(
           readOnly: coreInfo.readOnly,
           setTool: (tool) {
