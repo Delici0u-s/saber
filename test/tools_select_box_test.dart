@@ -4,20 +4,20 @@ import 'package:perfect_freehand/perfect_freehand.dart';
 import 'package:saber/components/canvas/_asset_cache.dart';
 import 'package:saber/components/canvas/_stroke.dart';
 import 'package:saber/components/canvas/image/editor_image.dart';
-import 'package:saber/data/tools/select.dart';
+import 'package:saber/components/canvas/select_result.dart';
+import 'package:saber/data/tools/select_box.dart';
 import 'package:sbn/has_size.dart';
 
 void main() {
   group('Select tool', () {
     test('selects the right strokes', () async {
-      final select = Select.currentSelect;
+      final select = SelectBox.currentSelect;
       final options = StrokeOptions(size: 9);
 
       // Drag gesture in a 10x10 square shape, on page 0
       select.onDragStart(Offset.zero, 0);
-      select.onDragUpdate(const Offset(0, 10));
+      select.onDragUpdate(const Offset(9, 10));
       select.onDragUpdate(const Offset(10, 10));
-      select.onDragUpdate(const Offset(10, 0));
 
       expect(
         select.selectResult.pageIndex,
@@ -59,8 +59,8 @@ void main() {
       select.onDragEnd(strokes, const []);
 
       expect(
-        select.selectResult.strokes,
-        hasLength(1),
+        select.selectResult.strokes.length,
+        1,
         reason: 'Only one stroke should be selected',
       );
       expect(
@@ -69,20 +69,18 @@ void main() {
         reason: 'The first stroke should be selected',
       );
       expect(
-        select.selectResult.images,
-        isEmpty,
+        select.selectResult.images.isEmpty,
+        true,
         reason: 'No images should be selected',
       );
     });
 
     test('selects the right images', () async {
-      final select = Select.currentSelect;
+      final select = SelectBox.currentSelect;
 
       // Drag gesture in a 10x10 square shape, on page 0
       select.onDragStart(Offset.zero, 0);
-      select.onDragUpdate(const Offset(0, 10));
       select.onDragUpdate(const Offset(10, 10));
-      select.onDragUpdate(const Offset(10, 0));
 
       expect(
         select.selectResult.pageIndex,
@@ -102,36 +100,36 @@ void main() {
       select.onDragEnd(const [], images);
 
       expect(
-        select.selectResult.images,
-        hasLength(2),
+        select.selectResult.images.length,
+        2,
         reason: 'Two images should be selected',
       );
       expect(
-        select.selectResult.images,
-        contains(images[0]),
+        select.selectResult.images.contains(images[0]),
+        true,
         reason: 'The first image should be selected',
       );
       expect(
-        select.selectResult.images,
-        contains(images[1]),
+        select.selectResult.images.contains(images[1]),
+        true,
         reason: 'The second image should be selected',
       );
       expect(
-        select.selectResult.strokes,
-        isEmpty,
+        select.selectResult.strokes.length,
+        0,
         reason: 'No strokes should be selected',
       );
     });
 
     group('getDominantStrokeColor', () {
       test('not done selecting', () {
-        final select = Select.currentSelect;
+        final select = SelectBox.currentSelect;
         select.unselect();
         expect(select.getDominantStrokeColor(), isNull);
       });
 
       test('with no selected strokes', () {
-        final select = Select.currentSelect;
+        final select = SelectBox.currentSelect;
         select.selectResult = SelectResult(
           pageIndex: 0,
           strokes: const [],
@@ -143,7 +141,7 @@ void main() {
       });
 
       test('with selected strokes', () {
-        final select = Select.currentSelect;
+        final select = SelectBox.currentSelect;
         select.selectResult = SelectResult(
           pageIndex: 0,
           strokes: [
@@ -168,7 +166,7 @@ void main() {
 class TestImage extends PngEditorImage {
   static final _assetCache = AssetCache();
 
-  new({required super.dstRect})
+  TestImage({required super.dstRect})
     : super(
         id: -1,
         extension: '.png',

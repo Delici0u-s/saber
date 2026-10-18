@@ -1062,6 +1062,9 @@ class Translations$editor$toolbar$en {
 	/// en: 'Select'
 	String get select => 'Select';
 
+	/// en: 'Select'
+	String get selectBox => 'Select box';
+
 	/// en: 'Toggle eraser (Ctrl E)'
 	String get toggleEraser => 'Toggle eraser (Ctrl E)';
 
