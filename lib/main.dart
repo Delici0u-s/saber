@@ -20,6 +20,7 @@ import 'package:saber/data/file_manager/file_manager.dart';
 import 'package:saber/data/flavor_config.dart';
 import 'package:saber/data/nextcloud/nc_http_overrides.dart';
 import 'package:saber/data/nextcloud/saber_syncer.dart';
+import 'package:saber/data/nextcloud/sync_scheduler.dart';
 import 'package:saber/data/prefs.dart';
 import 'package:saber/data/routes.dart';
 import 'package:saber/data/sentry/sentry_init.dart';
@@ -143,6 +144,7 @@ void startSyncAfterLoaded() async {
   // start syncing
   syncer.downloader.refresh();
   syncer.uploader.refresh();
+  SyncScheduler.start();
 }
 
 void setLocale() {

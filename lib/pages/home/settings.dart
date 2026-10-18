@@ -523,6 +523,24 @@ class _SettingsPageState extends State<SettingsPage> {
                     ToggleButtonsOption(-1, Text(t.settings.autosaveDisabled)),
                   ],
                 ),
+                SettingsSwitch(
+                  title: t.settings.prefLabels.syncOnSave,
+                  subtitle: t.settings.prefDescriptions.syncOnSave,
+                  icon: Icons.cloud_sync,
+                  pref: stows.syncOnSave,
+                ),
+                SettingsSelection(
+                  title: t.settings.prefLabels.syncPullInterval,
+                  subtitle: t.settings.prefDescriptions.syncPullInterval,
+                  icon: Icons.cloud_download,
+                  pref: stows.syncPullInterval,
+                  options: [
+                    const ToggleButtonsOption(15, Text('15s')),
+                    const ToggleButtonsOption(60, Text('1m')),
+                    const ToggleButtonsOption(300, Text('5m')),
+                    ToggleButtonsOption(-1, Text(t.settings.syncPullDisabled)),
+                  ],
+                ),
                 SettingsSelection(
                   title: t.settings.prefLabels.shapeRecognitionDelay,
                   subtitle: t.settings.prefDescriptions.shapeRecognitionDelay,

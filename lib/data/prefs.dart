@@ -161,6 +161,21 @@ class Stows {
     10000,
     volatile: !_isOnMainIsolate,
   );
+
+  /// Whether saving a note also checks the server for changes.
+  final syncOnSave = PlainStow(
+    'syncOnSave',
+    true,
+    volatile: !_isOnMainIsolate,
+  );
+
+  /// How often (in seconds) to check the server for changes while the app is
+  /// open, or -1 to only check on startup, resume and save.
+  final syncPullInterval = PlainStow(
+    'syncPullInterval',
+    60,
+    volatile: !_isOnMainIsolate,
+  );
   final shapeRecognitionDelay = PlainStow(
     'shapeRecognitionDelay',
     500,

@@ -157,6 +157,9 @@ class Translations$settings$en {
 	String get autosaveDisabled => 'Never';
 
 	/// en: 'Never'
+	String get syncPullDisabled => 'Never';
+
+	/// en: 'Never'
 	String get shapeRecognitionDisabled => 'Never';
 }
 
@@ -721,6 +724,12 @@ class Translations$settings$prefLabels$en {
 	/// en: 'Auto-save'
 	String get autosave => 'Auto-save';
 
+	/// en: 'Sync on save'
+	String get syncOnSave => 'Sync on save';
+
+	/// en: 'Check for changes'
+	String get syncPullInterval => 'Check for changes';
+
 	/// en: 'Shape recognition delay'
 	String get shapeRecognitionDelay => 'Shape recognition delay';
 
@@ -773,6 +782,12 @@ class Translations$settings$prefDescriptions$en {
 
 	/// en: 'Auto-save after a short delay, or never'
 	String get autosave => 'Auto-save after a short delay, or never';
+
+	/// en: 'When a note is saved, also check the server for changes from other devices'
+	String get syncOnSave => 'When a note is saved, also check the server for changes from other devices';
+
+	/// en: 'How often to check the server for changes while Saber is open (it always checks when opened)'
+	String get syncPullInterval => 'How often to check the server for changes while Saber is open (it always checks when opened)';
 
 	/// en: 'How often to update the shape preview'
 	String get shapeRecognitionDelay => 'How often to update the shape preview';

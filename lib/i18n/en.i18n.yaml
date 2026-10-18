@@ -123,6 +123,8 @@ settings:
     recentColorsLength: How many recent colors to store
     printPageIndicators: Print page indicators
     autosave: Auto-save
+    syncOnSave: Sync on save
+    syncPullInterval: Check for changes
     shapeRecognitionDelay: Shape recognition delay
     autoStraightenLines: Auto straighten lines
     customDataDir: Custom Saber folder
@@ -142,6 +144,8 @@ settings:
     editorPromptRename: You can always rename notes later
     printPageIndicators: Show page indicators in exports
     autosave: Auto-save after a short delay, or never
+    syncOnSave: When a note is saved, also check the server for changes from other devices
+    syncPullInterval: How often to check the server for changes while Saber is open (it always checks when opened)
     shapeRecognitionDelay: How often to update the shape preview
     autoStraightenLines: Straightens long lines without having to use the shape pen
     shouldAlwaysAlertForUpdates: Tell me about updates as soon as they're available
@@ -178,6 +182,7 @@ settings:
     mustBeDoneSyncing: Make sure syncing is complete before changing the folder
     unsupported: This feature is currently only for developers. Using it will likely result in data loss.
   autosaveDisabled: Never
+  syncPullDisabled: Never
   shapeRecognitionDisabled: Never
 logs:
   logs: Logs

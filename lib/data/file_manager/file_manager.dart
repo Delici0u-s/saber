@@ -14,6 +14,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:saber/components/home/sort_button.dart';
 import 'package:saber/data/nextcloud/saber_syncer.dart';
+import 'package:saber/data/nextcloud/sync_scheduler.dart';
 import 'package:saber/data/prefs.dart';
 import 'package:saber/i18n/strings.g.dart';
 import 'package:saber/pages/editor/editor.dart';
@@ -264,7 +265,7 @@ class FileManager {
 
     void afterWrite() {
       broadcastFileWrite(FileOperationType.write, filePath);
-      if (alsoUpload) syncer.uploader.enqueueRel(filePath);
+      if (alsoUpload) SyncScheduler.upload(filePath);
       if (filePath.endsWith(Editor.extension)) {
         _removeReferences(
           '${filePath.substring(0, filePath.length - Editor.extension.length)}'

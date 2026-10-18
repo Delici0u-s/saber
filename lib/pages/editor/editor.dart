@@ -39,6 +39,7 @@ import 'package:saber/data/extensions/change_notifier_extensions.dart';
 import 'package:saber/data/extensions/matrix4_extensions.dart';
 import 'package:saber/data/file_manager/file_manager.dart';
 import 'package:saber/data/nextcloud/saber_syncer.dart';
+import 'package:saber/data/nextcloud/sync_scheduler.dart';
 import 'package:saber/data/prefs.dart';
 import 'package:saber/data/tools/_tool.dart';
 import 'package:saber/data/tools/eraser.dart';
@@ -170,6 +171,7 @@ class EditorState extends State<Editor> {
   ValueNotifier<SavingState> savingState = ValueNotifier(SavingState.saved);
   Timer? _delayedSaveTimer;
   Timer? _watchServerTimer;
+  StreamSubscription<SaberSyncFile>? _noteDownloadSubscription;
 
   // used to prevent accidentally drawing when pinch zooming
   var lastSeenPointerCount = 0;
@@ -193,6 +195,9 @@ class EditorState extends State<Editor> {
 
     _initAsync();
     _assignKeybindings();
+    _noteDownloadSubscription = syncer.downloader.transferStream.listen(
+      _onFileDownloaded,
+    );
 
     super.initState();
   }
@@ -1094,6 +1099,28 @@ class EditorState extends State<Editor> {
     syncer.downloader.bringToFront(syncFile);
   }
 
+  /// Reloads the open note once a newer version of it (and its assets) has
+  /// been downloaded, unless it has unsaved changes, which win when saved.
+  void _onFileDownloaded(SaberSyncFile file) {
+    // Watching the server reloads the note itself, see [_refreshCurrentNote].
+    if (coreInfo.readOnlyReason == .watchingServer) return;
+
+    final notePath = coreInfo.filePath + Editor.extension;
+    bool isOfThisNote(SaberSyncFile f) =>
+        f.relativeLocalPath == notePath ||
+        f.relativeLocalPath.startsWith('$notePath.');
+    if (!isOfThisNote(file)) return;
+    // Wait until the rest of the note has been downloaded too.
+    if (syncer.downloader.pending.any(isOfThisNote)) return;
+    if (savingState.value != .saved || Pen.currentStroke != null) return;
+
+    log.info('Reloading $notePath after it changed on another device');
+    _loadCoreInfo(coreInfo.filePath).then((_) {
+      history = EditorHistory();
+      if (mounted) setState(() {});
+    });
+  }
+
   void autosaveAfterDelay() {
     if (history.isCurrentStateSaved) return cancelAutosaveAndMarkSaved();
 
@@ -1175,6 +1202,7 @@ class EditorState extends State<Editor> {
       ]);
       savingState.value = .saved;
       history.markLastChangeAsSaved();
+      if (stows.syncOnSave.value) SyncScheduler.pull();
     } catch (e, st) {
       log.severe('Failed to save file: $e', e, st);
       savingState.value = .waitingToSave;
@@ -2312,6 +2340,7 @@ class EditorState extends State<Editor> {
 
     _delayedSaveTimer?.cancel();
     _watchServerTimer?.cancel();
+    unawaited(_noteDownloadSubscription?.cancel());
     _lastSeenPointerCountTimer?.cancel();
 
     _removeKeybindings();
