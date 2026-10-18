@@ -1,5 +1,5 @@
 > [!IMPORTANT]
-> **Personal fork branch (`personal`)**: not the official Saber. For the real app, see
+> **Personal fork** (`main` and `personal` branches): not the official Saber. For the real app, see
 > [saber-notes/saber](https://github.com/saber-notes/saber).
 >
 > Changes on top of upstream `main`:
@@ -8,8 +8,11 @@
 >   used through a path override in `pubspec.yaml`. Building needs that repo cloned next to this one
 >   as `../perfect-freehand-dart`, on branch `fix/stationary-dots`.
 > - Merged open upstream pull requests:
->   [#1829](https://github.com/saber-notes/saber/pull/1829) (move selections between pages) and
->   [#1823](https://github.com/saber-notes/saber/pull/1823) (prevent adding PDFs as images).
+>   - [#1829](https://github.com/saber-notes/saber/pull/1829): move selections between pages
+>   - [#1823](https://github.com/saber-notes/saber/pull/1823): prevent adding PDFs as images
+>   - [#1718](https://github.com/saber-notes/saber/pull/1718): box selection tool (without the PR's
+>     colour bar restyle), adapted to #1829
+>   - [#1761](https://github.com/saber-notes/saber/pull/1761): area eraser
 >
 > **AI assistance:** the investigation, the `perfect_freehand` fix and this branch's setup were done
 > with help from Claude (Anthropic). Code on this branch is for personal use and isn't submitted to
