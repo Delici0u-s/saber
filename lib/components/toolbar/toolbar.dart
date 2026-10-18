@@ -5,6 +5,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_quill/flutter_quill.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:keybinder/keybinder.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -15,6 +16,7 @@ import 'package:saber/components/toolbar/color_bar.dart';
 import 'package:saber/components/toolbar/eraser_modal.dart';
 import 'package:saber/components/toolbar/export_bar.dart';
 import 'package:saber/components/toolbar/pen_modal.dart';
+import 'package:saber/components/toolbar/select_modal.dart';
 import 'package:saber/components/toolbar/selection_bar.dart';
 import 'package:saber/components/toolbar/size_picker.dart';
 import 'package:saber/components/toolbar/toolbar_button.dart';
@@ -27,8 +29,7 @@ import 'package:saber/data/tools/highlighter.dart';
 import 'package:saber/data/tools/laser_pointer.dart';
 import 'package:saber/data/tools/pen.dart';
 import 'package:saber/data/tools/pencil.dart';
-import 'package:saber/data/tools/select_box.dart';
-import 'package:saber/data/tools/select_lasso.dart';
+import 'package:saber/data/tools/select.dart';
 import 'package:saber/i18n/strings.g.dart';
 
 class Toolbar extends StatefulWidget {
@@ -190,21 +191,18 @@ class _ToolbarState extends State<Toolbar> {
 
     final currentColor = switch (widget.currentTool) {
       final Pen pen => pen.color,
-      final SelectLasso select => select.getDominantStrokeColor(),
+      final Select select => select.getDominantStrokeColor(),
       _ => null,
     };
 
-    if (widget.currentTool == SelectLasso.currentSelect) {
-      // Enable selection bar only when selection is done
-      toolOptionsType.value = SelectLasso.currentSelect.doneSelecting
-          ? .select
-          : .hide;
-    }
-    if (widget.currentTool == SelectBox.currentSelect) {
-      // Enable selection bar only when selection is done
-      toolOptionsType.value = SelectBox.currentSelect.doneSelecting
-          ? .select
-          : .hide;
+    if (widget.currentTool case final Select select) {
+      // Show the selection bar only when a selection is done,
+      // without closing the selection mode modal otherwise.
+      if (select.doneSelecting) {
+        toolOptionsType.value = .select;
+      } else if (toolOptionsType.value == .select) {
+        toolOptionsType.value = .hide;
+      }
     }
 
     final bars = <Widget>[
@@ -252,6 +250,7 @@ class _ToolbarState extends State<Toolbar> {
                 setTool: widget.setTool,
               ),
               .eraser => EraserModal(getTool: () => Eraser.currentEraser),
+              .selectMode => SelectModal(setTool: widget.setTool),
               .select => SelectionBar(
                 duplicateSelection: widget.duplicateSelection,
                 deleteSelection: widget.deleteSelection,
@@ -422,52 +421,36 @@ class _ToolbarState extends State<Toolbar> {
                         ),
                       ),
               ),
-              // Select Lasso
               ToolbarIconButton(
                 tooltip: t.editor.toolbar.select,
-                selected: widget.currentTool is SelectLasso,
+                selected: widget.currentTool is Select,
                 enabled: !widget.readOnly,
                 onPressed: () {
-                  toolOptionsType.value = .hide;
-                  widget.setTool(SelectLasso.currentSelect);
+                  if (widget.currentTool is Select) {
+                    toolOptionsType.value = toolOptionsType.value == .selectMode
+                        ? .hide
+                        : .selectMode;
+                  } else {
+                    toolOptionsType.value = .hide;
+                    widget.setTool(Select.current);
+                  }
                 },
                 padding: buttonPadding,
-                child: Icon(
-                  CupertinoIcons.lasso,
-                  shadows: !widget.readOnly
-                      ? [
-                          BoxShadow(
-                            color: colorScheme.primary,
-                            blurRadius: 0.1,
-                            spreadRadius: 10,
-                            blurStyle: BlurStyle.solid,
-                          ),
-                        ]
-                      : null,
-                ),
-              ),
-              // Select BOX
-              ToolbarIconButton(
-                tooltip: t.editor.toolbar.selectBox,
-                selected: widget.currentTool is SelectBox,
-                enabled: !widget.readOnly,
-                onPressed: () {
-                  toolOptionsType.value = .hide;
-                  widget.setTool(SelectBox.currentSelect);
-                },
-                padding: buttonPadding,
-                child: Icon(
-                  CupertinoIcons.selection_pin_in_out,
-                  shadows: !widget.readOnly
-                      ? [
-                          BoxShadow(
-                            color: colorScheme.primary,
-                            blurRadius: 0.1,
-                            spreadRadius: 10,
-                            blurStyle: BlurStyle.solid,
-                          ),
-                        ]
-                      : null,
+                child: ListenableBuilder(
+                  listenable: stows.lastSelectBoxMode,
+                  builder: (context, _) => Icon(
+                    Select.current.icon,
+                    shadows: !widget.readOnly
+                        ? [
+                            BoxShadow(
+                              color: colorScheme.primary,
+                              blurRadius: 0.1,
+                              spreadRadius: 10,
+                              blurStyle: BlurStyle.solid,
+                            ),
+                          ]
+                        : null,
+                  ),
                 ),
               ),
               ToolbarIconButton(
@@ -500,7 +483,18 @@ class _ToolbarState extends State<Toolbar> {
                   }
                 },
                 padding: buttonPadding,
-                child: const FaIcon(FontAwesomeIcons.eraser, size: 16),
+                child: ListenableBuilder(
+                  listenable: stows.lastEraserAreaMode,
+                  builder: (context, _) {
+                    final iconTheme = IconTheme.of(context);
+                    return SvgPicture.asset(
+                      Eraser.currentEraser.icon,
+                      width: iconTheme.size,
+                      height: iconTheme.size,
+                      theme: SvgTheme(currentColor: iconTheme.color!),
+                    );
+                  },
+                ),
               ),
               ToolbarIconButton(
                 tooltip: t.editor.toolbar.photo,
@@ -626,4 +620,4 @@ class _ToolbarState extends State<Toolbar> {
   }
 }
 
-enum ToolOptions { hide, pen, highlighter, pencil, eraser, select }
+enum ToolOptions { hide, pen, highlighter, pencil, eraser, selectMode, select }

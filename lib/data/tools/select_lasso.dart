@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:saber/components/canvas/_stroke.dart';
 import 'package:saber/components/canvas/image/editor_image.dart';
 import 'package:saber/components/canvas/select_result.dart';
@@ -17,6 +18,9 @@ class SelectLasso extends Select {
 
   @override
   ToolId get toolId => .select;
+
+  @override
+  IconData get icon => Symbols.lasso_select;
 
   @override
   void unselect() {

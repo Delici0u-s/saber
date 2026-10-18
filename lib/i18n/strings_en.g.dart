@@ -307,7 +307,8 @@ class Translations$editor$en {
 	late final Translations$editor$toolbar$en toolbar = Translations$editor$toolbar$en.internal(_root);
 	late final Translations$editor$pens$en pens = Translations$editor$pens$en.internal(_root);
 	late final Translations$editor$penOptions$en penOptions = Translations$editor$penOptions$en.internal(_root);
-  late final Translations$editor$eraserOptions$en eraserOptions = Translations$editor$eraserOptions$en.internal(_root);
+	late final Translations$editor$eraserOptions$en eraserOptions = Translations$editor$eraserOptions$en.internal(_root);
+	late final Translations$editor$selectOptions$en selectOptions = Translations$editor$selectOptions$en.internal(_root);
 	late final Translations$editor$colors$en colors = Translations$editor$colors$en.internal(_root);
 	late final Translations$editor$imageOptions$en imageOptions = Translations$editor$imageOptions$en.internal(_root);
 	late final Translations$editor$selectionBar$en selectionBar = Translations$editor$selectionBar$en.internal(_root);
@@ -1063,9 +1064,6 @@ class Translations$editor$toolbar$en {
 	/// en: 'Select'
 	String get select => 'Select';
 
-	/// en: 'Select'
-	String get selectBox => 'Select box';
-
 	/// en: 'Toggle eraser (Ctrl E)'
 	String get toggleEraser => 'Toggle eraser (Ctrl E)';
 
@@ -1146,6 +1144,21 @@ class Translations$editor$eraserOptions$en {
 
 	/// en: 'Area eraser'
 	String get areaEraser => 'Area eraser';
+}
+
+// Path: editor.selectOptions
+class Translations$editor$selectOptions$en {
+	Translations$editor$selectOptions$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Lasso select'
+	String get lassoSelect => 'Lasso select';
+
+	/// en: 'Box select'
+	String get boxSelect => 'Box select';
 }
 
 // Path: editor.colors

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:saber/components/toolbar/tool_mode_button.dart';
 import 'package:saber/data/extensions/axis_extensions.dart';
 import 'package:saber/data/prefs.dart';
 import 'package:saber/data/tools/eraser.dart';
@@ -49,7 +50,7 @@ class _EraserModalState extends State<EraserModal> {
             direction: axis,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _EraserModeButton(
+              ToolModeButton(
                 selected: !eraser.areaEraser,
                 tooltip: t.editor.eraserOptions.strokeEraser,
                 onPressed: () {
@@ -58,13 +59,14 @@ class _EraserModalState extends State<EraserModal> {
                   });
                 },
                 icon: SvgPicture.asset(
-                  'assets/images/eraser-stroke.svg',
+                  Eraser.strokeEraserIcon,
                   width: 32,
                   height: 32,
                   theme: SvgTheme(
-                    currentColor: !eraser.areaEraser
-                        ? ColorScheme.of(context).secondary
-                        : ColorScheme.of(context).onSurface,
+                    currentColor: ToolModeButton.iconColor(
+                      context,
+                      selected: !eraser.areaEraser,
+                    ),
                   ),
                 ),
               ),
@@ -72,7 +74,7 @@ class _EraserModalState extends State<EraserModal> {
                 width: axis == Axis.horizontal ? 8 : 0,
                 height: axis == Axis.vertical ? 8 : 0,
               ),
-              _EraserModeButton(
+              ToolModeButton(
                 selected: eraser.areaEraser,
                 tooltip: t.editor.eraserOptions.areaEraser,
                 onPressed: () {
@@ -81,13 +83,14 @@ class _EraserModalState extends State<EraserModal> {
                   });
                 },
                 icon: SvgPicture.asset(
-                  'assets/images/eraser-area.svg',
+                  Eraser.areaEraserIcon,
                   width: 32,
                   height: 32,
                   theme: SvgTheme(
-                    currentColor: eraser.areaEraser
-                        ? ColorScheme.of(context).secondary
-                        : ColorScheme.of(context).onSurface,
+                    currentColor: ToolModeButton.iconColor(
+                      context,
+                      selected: eraser.areaEraser,
+                    ),
                   ),
                 ),
               ),
@@ -188,39 +191,6 @@ class _EraserSizeSlider extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _EraserModeButton extends StatelessWidget {
-  const _EraserModeButton({
-    required this.selected,
-    required this.icon,
-    required this.tooltip,
-    required this.onPressed,
-  });
-
-  final bool selected;
-  final Widget icon;
-  final String tooltip;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = ColorScheme.of(context);
-    final iconColor = selected ? colorScheme.secondary : colorScheme.onSurface;
-
-    return IconButton(
-      onPressed: onPressed,
-      style: TextButton.styleFrom(
-        foregroundColor: iconColor,
-        backgroundColor: selected
-            ? colorScheme.secondary.withAlpha((0.1 * 255).round())
-            : Colors.transparent,
-        shape: const CircleBorder(),
-      ),
-      tooltip: tooltip,
-      icon: icon,
     );
   }
 }

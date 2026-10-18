@@ -292,6 +292,9 @@ editor:
   eraserOptions:
     strokeEraser: Stroke eraser
     areaEraser: Area eraser
+  selectOptions:
+    lassoSelect: Lasso select
+    boxSelect: Box select
   colors:
     colorPicker: Color picker
     customBrightnessHue: Custom $b $h

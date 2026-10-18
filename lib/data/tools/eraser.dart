@@ -49,6 +49,13 @@ class Eraser extends Tool {
 
   double get sqrSize => square(size);
 
+  /// Icons (SVG assets) for the stroke and area eraser modes.
+  static const strokeEraserIcon = 'assets/images/eraser-stroke.svg';
+  static const areaEraserIcon = 'assets/images/eraser-area.svg';
+
+  /// The icon for this eraser's current mode.
+  String get icon => areaEraser ? areaEraserIcon : strokeEraserIcon;
+
   final List<Stroke> _erased = [];
   final List<Stroke> _replacementStrokes = [];
   final Set<Stroke> _processedStrokes = {};

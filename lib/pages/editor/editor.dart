@@ -148,10 +148,8 @@ class EditorState extends State<Editor> {
         return Pencil.currentPencil;
       case .eraser:
         return Eraser.currentEraser;
-      case .select:
-        return SelectLasso.currentSelect;
-      case .selectBox:
-        return SelectBox.currentSelect;
+      case .select || .selectBox:
+        return Select.current;
       case .textEditing:
         return Tool.textEditing;
       case .laserPointer:
@@ -430,7 +428,7 @@ class EditorState extends State<Editor> {
               moveStrokeToPage(stroke, item.pageIndex, item.pageIndexStart!);
             }
           }
-          final select = SelectLasso.currentSelect;
+          final select = Select.current;
           if (select.doneSelecting) {
             select.selectResult.path = select.selectResult.path.shift(
               Offset(-item.offset!.left, -item.offset!.top),
@@ -1273,7 +1271,7 @@ class EditorState extends State<Editor> {
     if (photoInfos.isEmpty) return 0;
 
     // use the Select tool so that the user can move the new image
-    currentTool = SelectLasso.currentSelect;
+    currentTool = Select.current;
 
     var images = <EditorImage>[];
     for (final _PhotoInfo photoInfo in photoInfos) {
