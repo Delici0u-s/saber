@@ -336,6 +336,10 @@ class Stows {
   );
   static const defaultLineHeight = 40;
   static const defaultLineThickness = 3;
+
+  /// The ranges offered for a background pattern's line height and thickness.
+  static const lineHeightRange = (min: 20, max: 100);
+  static const lineThicknessRange = (min: 1, max: 5);
   final lastLineHeight = PlainStow(
     'lastLineHeight',
     defaultLineHeight,

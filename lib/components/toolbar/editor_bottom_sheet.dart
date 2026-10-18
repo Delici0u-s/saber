@@ -251,11 +251,12 @@ class _EditorBottomSheetState extends State<EditorBottomSheet> {
                 Expanded(
                   child: Slider(
                     value: widget.coreInfo.lineHeight.toDouble(),
-                    min: 20,
-                    max: 100,
-                    divisions: 8,
+                    min: Stows.lineHeightRange.min.toDouble(),
+                    max: Stows.lineHeightRange.max.toDouble(),
+                    divisions:
+                        Stows.lineHeightRange.max - Stows.lineHeightRange.min,
                     onChanged: (double value) => setState(() {
-                      widget.setLineHeight(value.toInt());
+                      widget.setLineHeight(value.round());
                     }),
                   ),
                 ),
@@ -275,11 +276,13 @@ class _EditorBottomSheetState extends State<EditorBottomSheet> {
                 Expanded(
                   child: Slider(
                     value: widget.coreInfo.lineThickness.toDouble(),
-                    min: 1,
-                    max: 5,
-                    divisions: 4,
+                    min: Stows.lineThicknessRange.min.toDouble(),
+                    max: Stows.lineThicknessRange.max.toDouble(),
+                    divisions:
+                        Stows.lineThicknessRange.max -
+                        Stows.lineThicknessRange.min,
                     onChanged: (double value) => setState(() {
-                      widget.setLineThickness(value.toInt());
+                      widget.setLineThickness(value.round());
                     }),
                   ),
                 ),
