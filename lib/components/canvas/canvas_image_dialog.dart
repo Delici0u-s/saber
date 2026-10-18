@@ -5,6 +5,7 @@ import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:saber/components/canvas/image/editor_image.dart';
+import 'package:saber/components/canvas/image_crop_dialog.dart';
 import 'package:saber/components/theming/adaptive_icon.dart';
 import 'package:saber/components/theming/adaptive_switch.dart';
 import 'package:saber/components/theming/saber_theme.dart';
@@ -94,18 +95,7 @@ class _CanvasImageDialogState extends State<CanvasImageDialog> {
                 ),
               };
             case final PngEditorImage image:
-              if (image.imageProvider is MemoryImage) {
-                bytes = (image.imageProvider as MemoryImage).bytes;
-              } else if (image.imageProvider is FileImage) {
-                bytes = await (image.imageProvider as FileImage).file
-                    .readAsBytes();
-              } else {
-                throw ArgumentError.value(
-                  image.imageProvider,
-                  'imageProvider',
-                  'Unknown image provider type',
-                );
-              }
+              bytes = await image.getBytes();
           }
           if (!context.mounted) return;
           FileManager.exportFile(
@@ -122,6 +112,26 @@ class _CanvasImageDialogState extends State<CanvasImageDialog> {
           cupertinoIcon: CupertinoIcons.arrow_down_circle_fill,
         ),
       ),
+      if (widget.image case final PngEditorImage image
+          when !widget.isBackground)
+        _CanvasImageDialogItem(
+          onTap: () async {
+            final navigator = Navigator.of(context);
+            final crop = await showDialog<Rect>(
+              context: context,
+              builder: (context) => ImageCropDialog(image: image),
+            );
+            if (crop == null) return;
+            final cropped = await image.cropped(crop);
+            image.onReplaceImage?.call(image, cropped);
+            navigator.pop();
+          },
+          title: t.editor.imageOptions.crop,
+          child: const AdaptiveIcon(
+            icon: Icons.crop,
+            cupertinoIcon: CupertinoIcons.crop,
+          ),
+        ),
       _CanvasImageDialogItem(
         onTap: () {
           widget.toggleAsBackground?.call();

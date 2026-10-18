@@ -326,6 +326,7 @@ editor:
     title: Image options
     invertible: Invertible
     download: Download
+    crop: Crop
     setAsBackground: Set as background
     removeAsBackground: Remove as background
     delete: Delete

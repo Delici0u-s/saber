@@ -236,6 +236,7 @@ class EditorState extends State<Editor> {
           image.onMoveImage = onMoveImage;
           image.onDeleteImage = onDeleteImage;
           image.onMiscChange = autosaveAfterDelay;
+          image.onReplaceImage = onReplaceImage;
         }
       }
     }
@@ -465,6 +466,11 @@ class EditorState extends State<Editor> {
 
         case .backgroundPattern:
           coreInfo.backgroundPattern = item.backgroundPatternChange!.previous;
+
+        case .replaceImage:
+          for (var i = 0; i < item.images.length; ++i) {
+            _swapImage(item.replacementImages[i], item.images[i]);
+          }
       }
 
       if (item.type != .move) {
@@ -526,6 +532,13 @@ class EditorState extends State<Editor> {
         undo(
           item.copyWith(
             backgroundPatternChange: item.backgroundPatternChange!.reverse(),
+          ),
+        );
+      case .replaceImage:
+        undo(
+          item.copyWith(
+            images: item.replacementImages,
+            replacementImages: item.images,
           ),
         );
     }
@@ -950,6 +963,33 @@ class EditorState extends State<Editor> {
     // setState to update undo button
     setState(() {});
     autosaveAfterDelay();
+  }
+
+  void onReplaceImage(EditorImage original, EditorImage replacement) {
+    replacement.id = coreInfo.nextImageId++;
+    history.recordChange(
+      EditorHistoryItem(
+        type: .replaceImage,
+        pageIndex: original.pageIndex,
+        strokes: [],
+        images: [original],
+        replacementImages: [replacement],
+      ),
+    );
+    setState(() => _swapImage(original, replacement));
+    autosaveAfterDelay();
+  }
+
+  /// Puts [to] in place of [from] on its page, keeping its stacking order.
+  void _swapImage(EditorImage from, EditorImage to) {
+    final images = coreInfo.pages[from.pageIndex].images;
+    final index = images.indexOf(from);
+    if (index == -1) {
+      images.add(to);
+    } else {
+      images[index] = to;
+    }
+    to.newImage = true;
   }
 
   void onDeleteImage(EditorImage image) {

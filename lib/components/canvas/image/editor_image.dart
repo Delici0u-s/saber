@@ -46,6 +46,9 @@ sealed class EditorImage extends ChangeNotifier {
   void Function(EditorImage, Rect)? onMoveImage;
   void Function(EditorImage)? onDeleteImage;
   void Function()? onMiscChange;
+
+  /// Replaces this image on its page with [replacement] (e.g. a cropped copy).
+  void Function(EditorImage original, EditorImage replacement)? onReplaceImage;
   final VoidCallback? onLoad;
 
   Rect srcRect = .zero;

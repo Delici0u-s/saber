@@ -146,6 +146,7 @@ class EditorHistoryItem {
     required this.strokes,
     this.replacementStrokes = const [],
     required this.images,
+    this.replacementImages = const [],
     this.offset,
     this.page,
     this.quillChange,
@@ -182,6 +183,10 @@ class EditorHistoryItem {
        assert(
          type != .backgroundPattern || backgroundPatternChange != null,
          'Background pattern change must be provided for backgroundPattern',
+       ),
+       assert(
+         type != .replaceImage || replacementImages.length == images.length,
+         'Each image needs a replacement for replaceImage',
        );
 
   final EditorHistoryItemType type;
@@ -190,6 +195,9 @@ class EditorHistoryItem {
   final List<Stroke> strokes;
   final List<Stroke> replacementStrokes;
   final List<EditorImage> images;
+
+  /// For [EditorHistoryItemType.replaceImage]: what each of [images] became.
+  final List<EditorImage> replacementImages;
   final Rect? offset;
   final EditorPage? page;
   final DocChange? quillChange;
@@ -203,6 +211,7 @@ class EditorHistoryItem {
     List<Stroke>? strokes,
     List<Stroke>? replacementStrokes,
     List<EditorImage>? images,
+    List<EditorImage>? replacementImages,
     Rect? offset,
     EditorPage? page,
     DocChange? quillChange,
@@ -216,6 +225,7 @@ class EditorHistoryItem {
       strokes: strokes ?? this.strokes,
       replacementStrokes: replacementStrokes ?? this.replacementStrokes,
       images: images ?? this.images,
+      replacementImages: replacementImages ?? this.replacementImages,
       offset: offset ?? this.offset,
       page: page ?? this.page,
       quillChange: quillChange ?? this.quillChange,
@@ -237,4 +247,5 @@ enum EditorHistoryItemType {
   quillUndoneChange,
   changeColor,
   backgroundPattern,
+  replaceImage,
 }

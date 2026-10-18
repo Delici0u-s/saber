@@ -111,16 +111,7 @@ class PngEditorImage extends EditorImage {
     assert(Isolate.current.debugName == 'main');
 
     if (srcRect.shortestSide == 0 || dstRect.shortestSide == 0) {
-      final Uint8List bytes;
-      if (imageProvider is MemoryImage) {
-        bytes = (imageProvider as MemoryImage).bytes;
-      } else if (imageProvider is FileImage) {
-        bytes = await (imageProvider as FileImage).file.readAsBytes();
-      } else {
-        throw Exception(
-          'EditorImage.getImage: imageProvider is ${imageProvider.runtimeType}',
-        );
-      }
+      final bytes = await getBytes();
 
       naturalSize = await ui.ImmutableBuffer.fromUint8List(bytes)
           .then((buffer) => ui.ImageDescriptor.encoded(buffer))
@@ -167,6 +158,97 @@ class PngEditorImage extends EditorImage {
     if (isThumbnail) {
       isThumbnail = true; // updates bytes and srcRect
     }
+  }
+
+  /// The encoded bytes of this image.
+  Future<Uint8List> getBytes() async => switch (imageProvider) {
+    MemoryImage(:final bytes) => bytes,
+    FileImage(:final file) => await file.readAsBytes(),
+    final provider => throw ArgumentError.value(
+      provider,
+      'imageProvider',
+      'Unknown image provider type',
+    ),
+  };
+
+  /// A copy of this image cropped to [crop], given as a fraction of the image
+  /// (0 to 1 on each axis). The copy covers the area of the page that the
+  /// cropped part did. Its [id] still needs to be set by the caller.
+  Future<PngEditorImage> cropped(Rect crop) async {
+    final (bytes, size) = await _cropBytes(await getBytes(), crop);
+    return PngEditorImage(
+      id: id,
+      assetCache: assetCache,
+      extension: '.png',
+      imageProvider: MemoryImage(bytes),
+      pageIndex: pageIndex,
+      pageSize: pageSize,
+      maxSize: maxSize,
+      invertible: invertible,
+      backgroundFit: backgroundFit,
+      onMoveImage: onMoveImage,
+      onDeleteImage: onDeleteImage,
+      onMiscChange: onMiscChange,
+      onLoad: onLoad,
+      dstRect: .fromLTWH(
+        dstRect.left + crop.left * dstRect.width,
+        dstRect.top + crop.top * dstRect.height,
+        crop.width * dstRect.width,
+        crop.height * dstRect.height,
+      ),
+      srcRect: Offset.zero & size,
+      naturalSize: size,
+    )..onReplaceImage = onReplaceImage;
+  }
+
+  /// Crops encoded image [bytes] to [crop] (a fraction of the image)
+  /// and returns the result as PNG bytes, with its size in pixels.
+  static Future<(Uint8List, Size)> _cropBytes(
+    Uint8List bytes,
+    Rect crop,
+  ) async {
+    final codec = await ui.instantiateImageCodec(bytes);
+    final source = (await codec.getNextFrame()).image;
+    codec.dispose();
+
+    // Whole pixels (at least one), so the crop is an exact copy.
+    final left = (crop.left * source.width).round().clamp(0, source.width - 1);
+    final top = (crop.top * source.height).round().clamp(0, source.height - 1);
+    final right = (crop.right * source.width).round().clamp(
+      left + 1,
+      source.width,
+    );
+    final bottom = (crop.bottom * source.height).round().clamp(
+      top + 1,
+      source.height,
+    );
+    final cropRect = Rect.fromLTRB(
+      left.toDouble(),
+      top.toDouble(),
+      right.toDouble(),
+      bottom.toDouble(),
+    );
+    final width = right - left;
+    final height = bottom - top;
+
+    final recorder = ui.PictureRecorder();
+    Canvas(recorder).drawImageRect(
+      source,
+      cropRect,
+      Rect.fromLTWH(0, 0, width.toDouble(), height.toDouble()),
+      Paint(),
+    );
+    final picture = recorder.endRecording();
+    final result = await picture.toImage(width, height);
+    final data = await result.toByteData(format: .png);
+    picture.dispose();
+    source.dispose();
+    result.dispose();
+
+    return (
+      data!.buffer.asUint8List(),
+      Size(width.toDouble(), height.toDouble()),
+    );
   }
 
   @override
@@ -221,5 +303,5 @@ class PngEditorImage extends EditorImage {
     srcRect: srcRect,
     naturalSize: naturalSize,
     isThumbnail: isThumbnail,
-  );
+  )..onReplaceImage = onReplaceImage;
 }

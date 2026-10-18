@@ -1265,6 +1265,9 @@ class Translations$editor$imageOptions$en {
 	/// en: 'Download'
 	String get download => 'Download';
 
+	/// en: 'Crop'
+	String get crop => 'Crop';
+
 	/// en: 'Set as background'
 	String get setAsBackground => 'Set as background';
 
