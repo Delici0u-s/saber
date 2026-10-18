@@ -1280,8 +1280,8 @@ packages:
     dependency: "direct main"
     description:
       path: "."
-      ref: "fix/stationary-dots"
-      resolved-ref: "640c91016d13bd94bfd847c5bb2a6e75f5ec705a"
+      ref: personal
+      resolved-ref: bf82a2fbb308d3dbd8db024d9a4acf80722891e7
       url: "https://github.com/Delici0u-s/perfect-freehand-dart.git"
     source: git
     version: "2.5.2+1"
