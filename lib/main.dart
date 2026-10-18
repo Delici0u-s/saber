@@ -23,6 +23,7 @@ import 'package:saber/data/nextcloud/saber_syncer.dart';
 import 'package:saber/data/nextcloud/sync_scheduler.dart';
 import 'package:saber/data/prefs.dart';
 import 'package:saber/data/routes.dart';
+import 'package:saber/data/screen_density.dart';
 import 'package:saber/data/sentry/sentry_init.dart';
 import 'package:saber/data/tools/stroke_properties.dart';
 import 'package:saber/i18n/strings.g.dart';
@@ -96,6 +97,7 @@ Future<void> appRunner(List<String> args) async {
     stows.url.waitUntilRead(),
     stows.allowInsecureConnections.waitUntilRead(),
     PencilShader.init(),
+    ScreenDensity.init(),
     Printing.info().then((info) {
       Editor.canRasterPdf = info.canRaster;
     }),

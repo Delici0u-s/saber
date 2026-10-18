@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:saber/components/navbar/responsive_navbar.dart';
 import 'package:saber/components/settings/app_info.dart';
 import 'package:saber/components/settings/nextcloud_profile.dart';
@@ -420,6 +421,17 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
 
                 SettingsSubtitle(subtitle: t.settings.prefCategories.editor),
+                SettingsSelection(
+                  title: t.settings.prefLabels.screenDpi,
+                  subtitle: t.settings.prefDescriptions.screenDpi,
+                  icon: Symbols.straighten,
+                  pref: stows.screenDpi,
+                  options: [
+                    ToggleButtonsOption(-1.0, Text(t.settings.screenDpiAuto)),
+                    for (final dpi in const [96.0, 120.0, 160.0, 200.0, 240.0])
+                      ToggleButtonsOption(dpi, Text(dpi.toStringAsFixed(0))),
+                  ],
+                ),
                 SettingsSelection(
                   title: t.settings.prefLabels.editorToolbarAlignment,
                   subtitle:

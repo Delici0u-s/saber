@@ -159,6 +159,9 @@ class Translations$settings$en {
 	/// en: 'Never'
 	String get syncPullDisabled => 'Never';
 
+	/// en: 'Auto'
+	String get screenDpiAuto => 'Auto';
+
 	/// en: 'Never'
 	String get shapeRecognitionDisabled => 'Never';
 }
@@ -727,6 +730,9 @@ class Translations$settings$prefLabels$en {
 	/// en: 'Sync on save'
 	String get syncOnSave => 'Sync on save';
 
+	/// en: 'Screen density'
+	String get screenDpi => 'Screen density';
+
 	/// en: 'Check for changes'
 	String get syncPullInterval => 'Check for changes';
 
@@ -785,6 +791,9 @@ class Translations$settings$prefDescriptions$en {
 
 	/// en: 'When a note is saved, also check the server for changes from other devices'
 	String get syncOnSave => 'When a note is saved, also check the server for changes from other devices';
+
+	/// en: 'Pixels per inch used for 'real size' zoom. Auto uses the value reported by your device'
+	String get screenDpi => 'Pixels per inch used for \'real size\' zoom. Auto uses the value reported by your device';
 
 	/// en: 'How often to check the server for changes while Saber is open (it always checks when opened)'
 	String get syncPullInterval => 'How often to check the server for changes while Saber is open (it always checks when opened)';
@@ -1450,6 +1459,9 @@ class Translations$editor$hud$en {
 
 	/// en: 'Lock panning to horizontal or vertical'
 	String get lockAxisAlignedPan => 'Lock panning to horizontal or vertical';
+
+	/// en: 'Zoom to real size (A4 page width)'
+	String get realSize => 'Zoom to real size (A4 page width)';
 }
 
 // Path: sentry.consent.description

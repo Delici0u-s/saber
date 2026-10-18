@@ -13,6 +13,7 @@ import 'package:saber/data/editor/page.dart';
 import 'package:saber/data/extensions/change_notifier_extensions.dart';
 import 'package:saber/data/extensions/matrix4_extensions.dart';
 import 'package:saber/data/prefs.dart';
+import 'package:saber/data/screen_density.dart';
 import 'package:saber/pages/editor/editor.dart';
 import 'package:vector_math/vector_math_64.dart';
 
@@ -74,6 +75,17 @@ class CanvasGestureDetector extends StatefulWidget {
 
   static const kMinScale = 0.3;
   static const kMaxScale = 10.0;
+
+  /// The zoom level at which a default-sized page, laid out in a container
+  /// [containerWidth] wide, is shown at its physical width.
+  static double realSizeScaleFor({
+    required double containerWidth,
+    required double logicalPixelsPerMm,
+  }) {
+    // At 1.0x, pages are as wide as the container but at most their own width.
+    final laidOutWidth = min(EditorPage.defaultWidth, containerWidth);
+    return EditorPage.defaultWidthMm * logicalPixelsPerMm / laidOutWidth;
+  }
 
   static double getTopOfPage({
     required int pageIndex,
@@ -371,8 +383,7 @@ class CanvasGestureDetectorState extends State<CanvasGestureDetector> {
     // snap to 1.0x zoom
     _snapZoomTimer?.cancel();
     final diffFrom1 = (scale - 1).abs();
-    // allow 0.001 leeway for floating point error
-    if (diffFrom1 < 0.05 && diffFrom1 > 0.001)
+    if (diffFrom1 < 0.05 && diffFrom1 > _scaleEpsilon && !isAtRealSize)
       _snapZoomTimer = Timer(const Duration(milliseconds: 200), resetZoom);
 
     if (scale < 1) {
@@ -402,6 +413,34 @@ class CanvasGestureDetectorState extends State<CanvasGestureDetector> {
       );
     }
   }
+
+  /// The zoom level at which a default-sized page is shown at its physical
+  /// size ([EditorPage.defaultWidthMm]) on this screen.
+  double get realSizeScale => CanvasGestureDetector.realSizeScaleFor(
+    containerWidth: containerBounds.maxWidth,
+    logicalPixelsPerMm: ScreenDensity.logicalPixelsPerMm,
+  );
+
+  /// Whether the zoom level is (close to) [realSizeScale].
+  bool get isAtRealSize =>
+      (widget._transformationController.value.approxScale - realSizeScale)
+          .abs() <
+      _scaleEpsilon;
+
+  /// Zooms so that pages are shown at their physical size, see [realSizeScale].
+  void zoomToRealSize() {
+    final transformation = widget._transformationController.value;
+    widget._transformationController.value =
+        setZoom(
+          scaleDelta: realSizeScale - transformation.approxScale,
+          transformation: transformation,
+          containerBounds: containerBounds,
+        ) ??
+        transformation;
+  }
+
+  /// Leeway for floating point error when comparing zoom levels.
+  static const _scaleEpsilon = 0.001;
 
   /// Resets the zoom level to 1.0x
   void resetZoom() {
@@ -549,6 +588,8 @@ class CanvasGestureDetectorState extends State<CanvasGestureDetector> {
               stows.lastZoomLock.value = zoomLock;
             }),
             resetZoom: zoomLockedValue != null ? null : resetZoom,
+            zoomToRealSize: zoomLockedValue != null ? null : zoomToRealSize,
+            isAtRealSize: () => isAtRealSize,
             singleFingerPanLock: singleFingerPanLock,
             setSingleFingerPanLock: (bool singleFingerPanLock) => setState(() {
               this.singleFingerPanLock = singleFingerPanLock;

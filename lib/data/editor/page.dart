@@ -21,6 +21,9 @@ class EditorPage extends ChangeNotifier implements HasSize {
   static const double defaultHeight = defaultWidth * 1.4;
   static const defaultSize = Size(defaultWidth, defaultHeight);
 
+  /// The physical width that [defaultWidth] stands for: an A4 page.
+  static const defaultWidthMm = 210.0;
+
   @override
   final Size size;
 

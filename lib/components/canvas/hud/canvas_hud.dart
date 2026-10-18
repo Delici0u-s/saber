@@ -15,6 +15,8 @@ class CanvasHud extends HookWidget {
     required this.zoomLock,
     required this.setZoomLock,
     required this.resetZoom,
+    required this.zoomToRealSize,
+    required this.isAtRealSize,
     required this.singleFingerPanLock,
     required this.setSingleFingerPanLock,
     required this.axisAlignedPanLock,
@@ -25,10 +27,18 @@ class CanvasHud extends HookWidget {
   final bool zoomLock;
   final ValueChanged<bool> setZoomLock;
   final VoidCallback? resetZoom;
+
+  /// Zooms so pages show at their physical size, or null if zoom is locked.
+  final VoidCallback? zoomToRealSize;
+  final bool Function() isAtRealSize;
   final bool singleFingerPanLock;
   final ValueChanged<bool> setSingleFingerPanLock;
   final bool axisAlignedPanLock;
   final ValueChanged<bool> setAxisAlignedPanLock;
+
+  /// Distance of the HUD from the canvas edges, and between its buttons.
+  static const _margin = 5.0;
+  static const _spacing = 5.0;
 
   @override
   Widget build(BuildContext context) {
@@ -58,48 +68,56 @@ class CanvasHud extends HookWidget {
         child: Stack(
           children: [
             Positioned(
-              top: 5,
-              left: 5,
-              child: CanvasGestureLockBtn(
-                lock: zoomLock,
-                setLock: setZoomLock,
-                icon: zoomLock ? Icons.lock : Icons.lock_open,
-                tooltip: zoomLock
-                    ? t.editor.hud.unlockZoom
-                    : t.editor.hud.lockZoom,
+              top: _margin,
+              left: _margin,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                spacing: _spacing,
+                children: [
+                  CanvasGestureLockBtn(
+                    lock: zoomLock,
+                    setLock: setZoomLock,
+                    icon: zoomLock ? Icons.lock : Icons.lock_open,
+                    tooltip: zoomLock
+                        ? t.editor.hud.unlockZoom
+                        : t.editor.hud.lockZoom,
+                  ),
+                  CanvasGestureLockBtn(
+                    lock: singleFingerPanLock,
+                    setLock: setSingleFingerPanLock,
+                    icon: singleFingerPanLock ? Icons.pinch : Icons.swipe_up,
+                    tooltip: singleFingerPanLock
+                        ? t.editor.hud.unlockSingleFingerPan
+                        : t.editor.hud.lockSingleFingerPan,
+                  ),
+                  CanvasGestureLockBtn(
+                    lock: axisAlignedPanLock,
+                    setLock: setAxisAlignedPanLock,
+                    tooltip: axisAlignedPanLock
+                        ? t.editor.hud.unlockAxisAlignedPan
+                        : t.editor.hud.lockAxisAlignedPan,
+                    child: AnimatedRotation(
+                      duration: const Duration(milliseconds: 200),
+                      turns: axisAlignedPanLock ? 0 : 1 / 8,
+                      child: const Icon(Symbols.drag_pan),
+                    ),
+                  ),
+                  if (zoomToRealSize != null)
+                    AnimatedBuilder(
+                      animation: transformationController,
+                      builder: (context, _) => CanvasGestureLockBtn(
+                        lock: isAtRealSize(),
+                        setLock: (_) => zoomToRealSize!(),
+                        icon: Symbols.straighten,
+                        tooltip: t.editor.hud.realSize,
+                      ),
+                    ),
+                ],
               ),
             ),
             Positioned(
-              top: 45,
-              left: 5,
-              child: CanvasGestureLockBtn(
-                lock: singleFingerPanLock,
-                setLock: setSingleFingerPanLock,
-                icon: singleFingerPanLock ? Icons.pinch : Icons.swipe_up,
-                tooltip: singleFingerPanLock
-                    ? t.editor.hud.unlockSingleFingerPan
-                    : t.editor.hud.lockSingleFingerPan,
-              ),
-            ),
-            Positioned(
-              top: 85,
-              left: 5,
-              child: CanvasGestureLockBtn(
-                lock: axisAlignedPanLock,
-                setLock: setAxisAlignedPanLock,
-                tooltip: axisAlignedPanLock
-                    ? t.editor.hud.unlockAxisAlignedPan
-                    : t.editor.hud.lockAxisAlignedPan,
-                child: AnimatedRotation(
-                  duration: const Duration(milliseconds: 200),
-                  turns: axisAlignedPanLock ? 0 : 1 / 8,
-                  child: const Icon(Symbols.drag_pan),
-                ),
-              ),
-            ),
-            Positioned(
-              top: 5,
-              right: 5,
+              top: _margin,
+              right: _margin,
               child: AnimatedBuilder(
                 animation: transformationController,
                 builder: (context, _) => CanvasZoomIndicator(

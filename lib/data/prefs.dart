@@ -171,6 +171,14 @@ class Stows {
 
   /// How often (in seconds) to check the server for changes while the app is
   /// open, or -1 to only check on startup, resume and save.
+  /// Logical pixels per inch of the screen for showing pages at real size,
+  /// or -1 to use the value reported by the platform (or a typical one).
+  final screenDpi = PlainStow(
+    'screenDpi',
+    -1.0,
+    volatile: !_isOnMainIsolate,
+  );
+
   final syncPullInterval = PlainStow(
     'syncPullInterval',
     60,

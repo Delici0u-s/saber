@@ -124,6 +124,7 @@ settings:
     printPageIndicators: Print page indicators
     autosave: Auto-save
     syncOnSave: Sync on save
+    screenDpi: Screen density
     syncPullInterval: Check for changes
     shapeRecognitionDelay: Shape recognition delay
     autoStraightenLines: Auto straighten lines
@@ -145,6 +146,7 @@ settings:
     printPageIndicators: Show page indicators in exports
     autosave: Auto-save after a short delay, or never
     syncOnSave: When a note is saved, also check the server for changes from other devices
+    screenDpi: Pixels per inch used for 'real size' zoom. Auto uses the value reported by your device
     syncPullInterval: How often to check the server for changes while Saber is open (it always checks when opened)
     shapeRecognitionDelay: How often to update the shape preview
     autoStraightenLines: Straightens long lines without having to use the shape pen
@@ -183,6 +185,7 @@ settings:
     unsupported: This feature is currently only for developers. Using it will likely result in data loss.
   autosaveDisabled: Never
   syncPullDisabled: Never
+  screenDpiAuto: Auto
   shapeRecognitionDisabled: Never
 logs:
   logs: Logs
@@ -387,6 +390,7 @@ editor:
     lockSingleFingerPan: Disable single-finger panning
     unlockAxisAlignedPan: Unlock panning to horizontal or vertical
     lockAxisAlignedPan: Lock panning to horizontal or vertical
+    realSize: Zoom to real size (A4 page width)
   pages: Pages
   untitled: Untitled
   needsToSaveBeforeExiting: Saving your changes… You can safely exit the editor when it's done
