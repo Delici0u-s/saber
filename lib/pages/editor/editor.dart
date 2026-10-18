@@ -147,7 +147,7 @@ class EditorState extends State<Editor> {
       case .pencil:
         return Pencil.currentPencil;
       case .eraser:
-        return Eraser();
+        return Eraser.currentEraser;
       case .select:
         return SelectLasso.currentSelect;
       case .selectBox:
@@ -161,7 +161,11 @@ class EditorState extends State<Editor> {
   Tool get currentTool => _currentTool;
   set currentTool(Tool tool) {
     _currentTool = tool;
-    if (tool is! Eraser) _lastNonEraserTool = tool;
+    if (tool is Eraser) {
+      Eraser.currentEraser = tool;
+    } else {
+      _lastNonEraserTool = tool;
+    }
     stows.lastTool.value = tool.toolId;
   }
 
@@ -382,6 +386,20 @@ class EditorState extends State<Editor> {
             image.newImage = true;
           }
 
+        case .eraseArea:
+          for (final stroke in item.replacementStrokes) {
+            coreInfo.pages[stroke.pageIndex].strokes.remove(stroke);
+          }
+          for (final stroke in item.strokes) {
+            createPage(stroke.pageIndex);
+            coreInfo.pages[stroke.pageIndex].insertStroke(stroke);
+          }
+          for (final image in item.images) {
+            createPage(image.pageIndex);
+            coreInfo.pages[image.pageIndex].images.add(image);
+            image.newImage = true;
+          }
+
         case .deletePage:
           // make sure we already have a (blank/otherwise) page at this index
           createPage(item.pageIndex - 1);
@@ -469,6 +487,14 @@ class EditorState extends State<Editor> {
         undo(item.copyWith(type: .erase));
       case .erase:
         undo(item.copyWith(type: .draw));
+      case .eraseArea:
+        for (final stroke in item.strokes) {
+          coreInfo.pages[stroke.pageIndex].strokes.remove(stroke);
+        }
+        for (final stroke in item.replacementStrokes) {
+          createPage(stroke.pageIndex);
+          coreInfo.pages[stroke.pageIndex].insertStroke(stroke);
+        }
       case .deletePage:
         undo(item.copyWith(type: .insertPage));
       case .insertPage:
@@ -807,12 +833,14 @@ class EditorState extends State<Editor> {
           stylusButtonWasPressed = false;
           currentTool = _lastNonEraserTool;
         }
-        if (erased.isEmpty) return;
+        if (erased.erasedStrokes.isEmpty && erased.replacementStrokes.isEmpty)
+          return;
         history.recordChange(
           EditorHistoryItem(
-            type: .erase,
+            type: erased.replacementStrokes.isNotEmpty ? .eraseArea : .erase,
             pageIndex: dragPageIndex!,
-            strokes: erased,
+            strokes: erased.erasedStrokes,
+            replacementStrokes: erased.replacementStrokes,
             images: [],
           ),
         );

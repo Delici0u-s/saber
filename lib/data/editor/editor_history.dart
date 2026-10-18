@@ -144,6 +144,7 @@ class EditorHistoryItem {
     required this.pageIndex,
     this.pageIndexStart,
     required this.strokes,
+    this.replacementStrokes = const [],
     required this.images,
     this.offset,
     this.page,
@@ -187,6 +188,7 @@ class EditorHistoryItem {
   final int pageIndex;
   final int? pageIndexStart;
   final List<Stroke> strokes;
+  final List<Stroke> replacementStrokes;
   final List<EditorImage> images;
   final Rect? offset;
   final EditorPage? page;
@@ -199,6 +201,7 @@ class EditorHistoryItem {
     int? pageIndex,
     int? pageIndexStart,
     List<Stroke>? strokes,
+    List<Stroke>? replacementStrokes,
     List<EditorImage>? images,
     Rect? offset,
     EditorPage? page,
@@ -211,6 +214,7 @@ class EditorHistoryItem {
       pageIndex: pageIndex ?? this.pageIndex,
       pageIndexStart: pageIndexStart ?? this.pageIndexStart,
       strokes: strokes ?? this.strokes,
+      replacementStrokes: replacementStrokes ?? this.replacementStrokes,
       images: images ?? this.images,
       offset: offset ?? this.offset,
       page: page ?? this.page,
@@ -225,6 +229,7 @@ class EditorHistoryItem {
 enum EditorHistoryItemType {
   draw,
   erase,
+  eraseArea,
   deletePage,
   insertPage,
   move,
