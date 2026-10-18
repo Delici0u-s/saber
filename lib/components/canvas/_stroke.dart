@@ -228,6 +228,11 @@ class Stroke {
     }
   }
 
+  /// Whether this stroke never leaves its own width, i.e. it's a dot.
+  bool get isDot =>
+      points.isNotEmpty &&
+      points.every((point) => (point - points.first).distance <= options.size);
+
   @protected
   List<Offset> getPolygon({required StrokeQuality quality}) {
     if (!pressureEnabled) {
@@ -236,15 +241,26 @@ class Stroke {
     final rememberSimulatedPressure =
         quality == .high && options.simulatePressure && options.isComplete;
 
+    // Tapering a dot (e.g. with the pencil) would shrink it to nothing.
+    final shapeOptions = isDot
+        ? options.copyWith(
+            start: options.start.copyWith(
+              taperEnabled: false,
+              customTaper: null,
+            ),
+            end: options.end.copyWith(taperEnabled: false, customTaper: null),
+          )
+        : options;
+
     final polygon = getStroke(
       skipPoints(points, quality.N),
       options: switch (quality) {
-        .low => options.copyWith(
+        .low => shapeOptions.copyWith(
           simulatePressure: false,
           smoothing: 0,
           streamline: 0,
         ),
-        .high => options,
+        .high => shapeOptions,
       },
       rememberSimulatedPressure: rememberSimulatedPressure,
     );
