@@ -1,4 +1,4 @@
-# Handoff (2026-10-19, paused here)
+# Handoff (2026-10-19, paused here; continue on the desktop)
 
 Where things stand, what's left, and how to set up a new machine.
 
@@ -67,27 +67,35 @@ Pressure is simulated along the whole stroke before it's cut into dashes, so das
 width when the stroke is finished. The area eraser cuts at its edge and keeps each part's place in
 the pattern (`lo`, `Stroke.lineStyleOffset`). Tested on the laptop; not yet on the tablet.
 
-### 4. Ruler (done, `06ddf45b`, `25f0d7fa`)
+### 4. Ruler (built, `06ddf45b`, `25f0d7fa`, `5b8d8b9c`; waiting on your feedback)
 
-A ruler, try square or set square (Geodreieck) over the canvas (`Ruler`, `RulerOutline` and
+A ruler, try square or Geodreieck over the canvas (`Ruler`, `RulerOutline`, `RulerUnit` and
 `RulerOverlay` in `lib/components/canvas/ruler.dart`; bar in `toolbar/ruler_modal.dart`). It lives
 on the screen (`CanvasGestureDetector`), so it stays put while scrolling and isn't saved or exported.
-- **Toolbar:** the ruler button shows it and opens a bar: shape, *Mark spacing* (mm between marks,
-  `rulerMarkSpacingMm`) and a hide button. Tapping the button again closes or reopens the bar.
+- **Toolbar:** the ruler button shows it and opens a bar: shape, unit (mm/cm, inch, pt/pica, custom;
+  `rulerUnit`), *Mark spacing* for custom (`rulerMarkSpacingMm`) and a hide button. Tapping the
+  button again closes or reopens the bar. Shape and unit are remembered (`lastRulerShape`).
 - **Move and rotate:** drag the body; drag the ring in its middle to rotate (snaps to multiples of
   15° within 2°, angle shown in the ring); two fingers, a trackpad or the mouse wheel also rotate.
-- **Drawing along it:** a pen stroke (any `Pen`) started within the snap distance of a side, on
-  either side of it, has every point moved onto that side, half the stroke's width outside it, and
-  stops at the side's corners (`EditorState._alongRuler`, `RulerEdge.project`). Pointers in that
-  band pass through to the canvas. Snap distance is the *Ruler snap distance* setting
-  (`rulerSnapDistance`, 8–32 px); the ruler is a 48 px grab area plus a snap band on each side.
-- **Sizes:** the ruler reaches past the screen; the try square and set square scale with the
-  window's shorter side (`RulerOutline._bladeOfScreen`, `_setSquareOfScreen`), never smaller than
-  the ring needs.
-- **Marks:** millimetres on the page as the *Real size paper* setting defines them
-  (`ScreenDensity.logicalPixelsPerMm × zoom / realSizeScale`), so real mm at real size zoom. Every
-  5th and 10th mark longer, labels in cm; marks and labels are thinned out when they'd crowd, and
-  labels that would overlap the ring, a side, the protractor or another scale are left out.
+- **Drawing along it** (`RulerOutline.edgeFor`, `EditorState._alongRuler`): a pen stroke (any `Pen`)
+  snaps to a side when it comes within the snap distance of it, at the start or mid-stroke; it
+  stays on that side while the pen is against it or pushed into the ruler, and lets go when pulled
+  more than the snap distance away. Points sit half the stroke's width outside the side and stop
+  at its corners. Pointers in the snap band pass through to the canvas; only the rest of the body
+  moves it. Snap distance: *Ruler snap distance* setting (`rulerSnapDistance`, 8–32 px).
+- **Sizes:** the ruler is a 48 px grab area plus a snap band each side, reaching past the screen.
+  The try square is DIN 875 150 × 100 mm with 30 mm legs (Hoffmann's DIN 875/1 flat square; DIN 875
+  fixes the leg lengths, widths vary by maker). The Geodreieck is 160 × 80 mm (Aristo's 16 cm), scale
+  ±7 cm, protractor 3 mm inside the short sides with two label rows (0–180 each way) and the
+  perpendicular through 0. Both are page mm, so they scale with zoom (real size at *Real size*).
+- **Marks:** page units as the *Real size paper* setting defines them
+  (`ScreenDensity.logicalPixelsPerMm × zoom / realSizeScale`). `RulerUnit.groups` sets the longer
+  marks and labels (mm: 5, 10; inch: 1/8, 1/4, 1/2, 1; pt: 6, 12). Marks and labels thin out when
+  they'd crowd; labels that would overlap the ring, a side, the protractor or another scale are left
+  out.
+- **Your feedback so far:** it looked ugly and the shapes weren't standard sizes. `5b8d8b9c` restyled
+  it (shadow, outline, finer marks, a ring with rotate arrows) and made the sizes real. I checked the
+  look only in test renders with the app font, not in the app.
 
 ### 5. Test on the devices (yours)
 
@@ -96,10 +104,10 @@ on the screen (`CanvasGestureDetector`), so it stays put while scrolling and isn
   (`scripts/dev.sh linux install`) and check a reload of a note with images doesn't blink.
 - **Line styles and area eraser on the tablet** (`6005f64a`): draw dashed lines with the pen
   (real pressure, unlike the laptop's mouse) and erase across them.
-- **Ruler** (`06ddf45b`, `25f0d7fa`): on the laptop and the tablet, each shape: move, rotate (ring,
-  two fingers, mouse wheel), draw along every side, change the mark spacing and the snap distance,
-  and at *Real size* zoom hold a real ruler to the screen to check the marks. Labels were only
-  checked in tests (with a placeholder font), so look at how they fit with the real font.
+- **Ruler** (`5b8d8b9c`): on the laptop and the tablet, each shape: move, rotate (ring, two
+  fingers, mouse wheel), draw along every side (starting on it and reaching it mid-stroke, then
+  pulling away), each unit, and at *Real size* zoom hold a real ruler/square to the screen. Does it
+  still look ugly?
 - **Strokes with corners when zoomed out:** also in upstream Saber. Drawing in full detail down to
   0.5x zoom (`3e39cc4`) didn't make them look smoother on the laptop and was reverted (`1690a0c`),
   so the cause is elsewhere (maybe the mouse's coarse input). Check on the tablet with the pen.
