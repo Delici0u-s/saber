@@ -195,10 +195,11 @@ dependency_overrides:
   # https://github.com/GregoryConrad/native_toolchain_rust/issues/103
   native_toolchain_rust: 1.0.4+0
 
-  # Personal fork only. The `personal` branch has the fix for invisible
-  # stationary dots (https://github.com/steveruizok/perfect-freehand-dart/pull/27)
-  # plus dots sized by the highest pressure (not upstreamed). Removing this
-  # override loses the pressure sizing, and the fix until a release includes it.
+  # Personal fork only. The `personal` branch has the tap fixes from
+  # https://github.com/steveruizok/perfect-freehand-dart/pull/27 (stationary
+  # dots, sized by the highest pressure, drawn round). Remove this override
+  # once a perfect_freehand release on pub.dev includes them, and raise the
+  # version constraint above to that release.
   perfect_freehand:
     git:
       url: https://github.com/Delici0u-s/perfect-freehand-dart.git

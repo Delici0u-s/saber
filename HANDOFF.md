@@ -1,86 +1,81 @@
-# Handoff (2026-10-19, updated)
+# Handoff (2026-10-19, paused here)
 
-Where things stand, what's next, and how to set up a new machine.
+Where things stand, what's left, and how to set up a new machine.
 
 ## State
 
 | Repo (your forks) | Branch | Commit | Pushed? | What |
 |---|---|---|---|---|
-| `Delici0u-s/saber` | `personal` | see `git log` | yes | Fork features + lock on `8808f44` |
-| same | `main` | `6d7ce1ba` | yes | **Behind `personal`** (no lock bumps yet) |
-| `Delici0u-s/perfect-freehand-dart` | `personal` | `8808f44` | yes | PR + all dot fixes |
-| same | `fix/stationary-dots` | `8e380a6` | **no** (local only) | PR [#27](https://github.com/steveruizok/perfect-freehand-dart/pull/27) + 1 squashed pressure commit |
+| `Delici0u-s/saber` | `personal` = `main` | see `git log` | yes | Fork features + lock on library `8808f44` |
+| `Delici0u-s/perfect-freehand-dart` | `personal` | `8808f44` | yes | PR + all tap fixes |
+| same | `fix/stationary-dots` | `92c70b3` | **no** (local only; remote is at `8e380a6`) | PR [#27](https://github.com/steveruizok/perfect-freehand-dart/pull/27) |
 
 Saber gets `perfect_freehand` from the fork's **`personal`** branch via `dependency_overrides`
 in `pubspec.yaml`; `pubspec.lock` pins the commit (`flutter pub upgrade perfect_freehand` bumps it).
+This does **not** switch to upstream by itself: see "When the PR is released" below.
 
-### Library commits on `personal` beyond the PR (`640c910`)
+### PR #27 commits
 
-| Commit | What | In `fix/stationary-dots`? |
-|---|---|---|
-| `bf82a2f` | Tap's dot sized by the highest pressure (exact same position only) | yes, squashed into `8e380a6` |
-| `492156a` | Same for taps that drift: points within `options.size` of the first count as a tap | yes, squashed |
-| `d6ef51f` | Test: 3/4/100 stationary points give the same result as one point | yes, squashed |
-| `8808f44` | **Lone point drawn as a round dot** (see below) | **no** |
+| Commit | What |
+|---|---|
+| `79a500a` | Dots for stationary points with varying pressure (original PR) |
+| `640c910` | Test: stationary points golden |
+| `8e380a6` | A tap's dot sized by the highest pressure; points within `options.size` of the first count as one tap (squash of `bf82a2f`, `492156a`, `d6ef51f` on `personal`) |
+| `92c70b3` | **Lone point drawn as a round dot** (= `8808f44` on `personal`), not pushed yet |
 
-What each bug was:
-- **Pressure** (`492156a`): a real tap drifts by a fraction of a pixel. Then the middle points
-  were skipped and the dot used the *last* (lift-off, lightest) point's pressure. Verified on the
-  tablet: dots now follow the hardest press.
-- **Stretched dots** (`8808f44`, seen on desktop with a thin pen): `getStrokePoints` added a helper
+After `92c70b3`, `lib/` and `test/` on `fix/stationary-dots` are identical to `personal`.
+
+What the bugs were:
+- **Pressure**: a real tap drifts by a fraction of a pixel. Then the middle points were skipped
+  and the dot used the *last* (lift-off, lightest) point's pressure. Verified on the tablet.
+- **Stretched dots** (seen on the laptop with a thin pen): `getStrokePoints` added a helper
   point 1pt right and down from a lone point (upstream behaviour, also in the JS library), so every
-  dot was a tiny diagonal stroke, √2 ≈ 1.4pt longer along ↘ (40% at size 3). Since taps now collapse
-  to one point, every tap was affected. Fix: drop the helper point; `getStrokeOutlinePoints`
-  already draws a lone point as a round dot. Goldens changed (dots only): `one_point`,
-  `two_equal_points`, `stationary_points`, `short_strokes`. New test checks roundness for sizes
-  1–100 and 1–100 points.
+  dot was a tiny diagonal stroke, √2 ≈ 1.4pt longer along ↘. Fix: drop the helper point;
+  `getStrokeOutlinePoints` already draws a lone point as a round dot. Goldens changed (dots only):
+  `one_point`, `two_equal_points`, `stationary_points`, `short_strokes`. Verified in the app on
+  the laptop (2026-10-19).
 
-All checks pass on `personal`: 64 tests, `dart format`, `flutter analyze` (2 known `test_fixes`
-infos), `dart fix --compare-to-golden` in `test_fixes/` (2/0).
+All checks pass on both branches: 64 tests, `dart format`.
 
-## Next tasks
+## What's left
 
-### 1. Test the round dots in the app (not done yet)
+### 1. Push the PR update (online part, yours)
 
 ```sh
-scripts/dev.sh linux      # desktop: click, click while nudging, thin + thick pen
-scripts/dev.sh android    # tablet: light/hard taps, still the right size and round now
-```
-
-### 2. Update PR #27 (you said you'd do the online part yourself)
-
-Decide whether `8808f44` goes into the PR. It changes upstream behaviour for single points
-(a reviewer may ask), but without it the PR's taps look stretched. To fold it into the same
-single commit on the PR branch:
-
-```sh
-cd perfect-freehand-dart
+cd ../perfect-freehand-dart
 git switch fix/stationary-dots
-git reset --soft 640c910                         # undo the local squash commit, keep its changes
-git checkout personal -- lib test                # take every file from personal
-git diff --cached --stat                         # get_stroke_points.dart, test, 4 goldens
-flutter test && git commit                       # one commit, message covering pressure + round dots
-git checkout analysis_options.yaml               # flutter test adds a build/** exclude; not ours
-git push origin fix/stationary-dots              # updates the PR
+git push origin fix/stationary-dots     # fast-forward, no force needed
 ```
 
-Or keep `8e380a6` and add `8808f44` as a second commit: `git cherry-pick 8808f44`.
+Then a PR comment (`gh pr comment 27 -R steveruizok/perfect-freehand-dart --body "…"`), e.g.:
 
-Then add a PR comment (`gh pr comment 27 -R steveruizok/perfect-freehand-dart --body "…"`)
-or edit the description (`gh pr view 27 … --json body -q .body > pr.md`, edit,
-`gh pr edit 27 … --body-file pr.md`). Mention: taps use the highest pressure, small drift counts
-as a tap, lone points are round, and which goldens changed.
+> Two more fixes for taps: points that stay within `size` of the first one now count as a single
+> tap at the highest pressure (a real tap drifts by a fraction of a pixel, so the dot came out at
+> lift-off pressure). A lone point is also no longer given a helper point 1pt down-right, so dots
+> are round instead of short diagonal strokes. Goldens changed (only their dots): `one_point`,
+> `two_equal_points`, `stationary_points`, `short_strokes`.
 
-### 3. Housekeeping
+### 2. Respond to review on PR #27, if any
 
-- Saber `main` is behind `personal` (lock bumps): fast-forward it when happy
-  (`git switch main && git merge --ff-only personal && git push`).
-- After the PR is updated, Saber's override could point at `ref: fix/stationary-dots` instead of
-  `personal`.
-- Untracked in Saber, not committed: `INVESTIGATION_NOTES.md` (notes from 2026-10-18),
-  `test/failures/` (output of the known failing goldens; deletable).
+Make changes on `personal` first (that's what Saber uses), then bring them to
+`fix/stationary-dots` (cherry-pick, or squash if the reviewer asks for fewer commits).
 
-### Gotchas from this session
+### 3. When the PR is released
+
+The override is manual: pub can't fall back to upstream by itself, and a merge isn't enough
+(the normal dependency comes from pub.dev). Once a `perfect_freehand` release on pub.dev has
+the fixes: delete the `perfect_freehand` block under `dependency_overrides` in `pubspec.yaml`,
+raise `perfect_freehand: ^2.5.1` to that release, `flutter pub get`, test, commit.
+
+Keep the override on `ref: personal` until then (not `fix/stationary-dots`): you control
+`personal`, while the PR branch may be rebased during review.
+
+### Housekeeping
+
+- Keep Saber `main` level with `personal` after pushing:
+  `git switch main && git merge --ff-only personal && git push && git switch personal`.
+
+### Gotchas
 
 - `flutter test`/`flutter analyze` in the library add a `build/**` exclude to
   `analysis_options.yaml`: undo with `git checkout analysis_options.yaml` before committing.
