@@ -56,7 +56,18 @@ class EditorPage extends ChangeNotifier implements HasSize {
   /// so the canvas can outline it. Null when not erasing.
   ({Offset center, double radius})? eraserOutline;
 
-  late final CanvasKey innerCanvasKey = CanvasKey();
+  /// The key of this page's canvas, see [takeOverCanvasOf].
+  CanvasKey get innerCanvasKey => _innerCanvasKey;
+  var _innerCanvasKey = CanvasKey();
+
+  /// Shows this page in [other]'s canvas instead of a new one, so a reloaded
+  /// page updates what's on screen (e.g. a rendered PDF) instead of drawing
+  /// it again from scratch. [other] must no longer be shown.
+  void takeOverCanvasOf(EditorPage other) {
+    _innerCanvasKey = other._innerCanvasKey;
+    _renderBox = null;
+  }
+
   RenderBox? _renderBox;
   RenderBox? get renderBox {
     return _renderBox ??=

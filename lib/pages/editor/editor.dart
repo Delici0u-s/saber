@@ -222,7 +222,11 @@ class EditorState extends State<Editor> {
   }
 
   Future _loadCoreInfo(String filePath) async {
-    coreInfo = await EditorCoreInfo.loadFromFilePath(filePath);
+    await _applyCoreInfo(await EditorCoreInfo.loadFromFilePath(filePath));
+  }
+
+  Future _applyCoreInfo(EditorCoreInfo loaded) async {
+    coreInfo = loaded;
     if (coreInfo.readOnly) {
       log.info('Loaded file as read-only: ${coreInfo.readOnlyReason}');
     }
@@ -1094,8 +1098,8 @@ class EditorState extends State<Editor> {
     void listener(SaberSyncFile transferred) {
       if (transferred != syncFile) return;
       subscription.cancel();
-      _loadCoreInfo(relativeFilePath)
-          .then((_) => coreInfo.readOnlyReason = .watchingServer);
+      log.info('Reloading $relativeFilePath while watching the server');
+      unawaited(_reloadInPlace());
     }
 
     subscription = syncer.downloader.transferStream.listen(listener);
@@ -1117,13 +1121,80 @@ class EditorState extends State<Editor> {
     if (!isOfThisNote(file)) return;
     // Wait until the rest of the note has been downloaded too.
     if (syncer.downloader.pending.any(isOfThisNote)) return;
-    if (savingState.value != .saved || Pen.currentStroke != null) return;
+    if (!_canReload) return;
 
     log.info('Reloading $notePath after it changed on another device');
-    _loadCoreInfo(coreInfo.filePath).then((_) {
-      history = EditorHistory();
-      if (mounted) setState(() {});
-    });
+    unawaited(_reloadInPlace());
+  }
+
+  bool get _canReload =>
+      savingState.value == .saved && Pen.currentStroke == null;
+
+  /// Replaces the open note with its version on disk without flashing blank:
+  /// pages keep their canvases, unchanged PDFs stay open and rendered, and
+  /// the images on screen are loaded before the swap.
+  Future<void> _reloadInPlace() async {
+    final old = coreInfo;
+    final reloaded = await EditorCoreInfo.loadFromFilePath(old.filePath);
+    final oldPdfs = old.assetCache.pdfDocumentCache;
+    final reloadedPdfs = reloaded.assetCache.pdfDocumentCache;
+    final pdfsOpen = oldPdfs.fileDocumentCount;
+    final pdfsKept = await reloadedPdfs.adoptUnchanged(oldPdfs);
+    final imagesLoaded = await _loadInShownImages(old: old, reloaded: reloaded);
+    log.info(
+      'Reload: kept $pdfsKept of $pdfsOpen open PDFs, '
+      'loaded $imagesLoaded shown images before swapping',
+    );
+
+    // Something changed while loading: keep the note as it is.
+    if (!mounted || coreInfo != old || !_canReload) {
+      await oldPdfs.adoptUnchanged(reloadedPdfs);
+      reloaded.dispose();
+      return;
+    }
+
+    for (var i = 0; i < old.pages.length && i < reloaded.pages.length; i++) {
+      reloaded.pages[i].takeOverCanvasOf(old.pages[i]);
+    }
+    // Keep watching the server, see [_refreshCurrentNote].
+    if (old.readOnlyReason == .watchingServer) {
+      reloaded.readOnlyReason ??= .watchingServer;
+    }
+    await _applyCoreInfo(reloaded);
+    history = EditorHistory();
+    if (mounted) setState(() {});
+    // Close the PDFs that changed, once the old pages are off screen.
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => old.assetCache.dispose(),
+    );
+  }
+
+  /// Loads the images of [reloaded] on the pages that are on screen,
+  /// so they appear straight away when [reloaded] replaces [old].
+  /// Returns how many it loaded.
+  Future<int> _loadInShownImages({
+    required EditorCoreInfo old,
+    required EditorCoreInfo reloaded,
+  }) async {
+    final toLoad = <EditorImage>[
+      for (var i = 0; i < old.pages.length && i < reloaded.pages.length; i++)
+        if (old.pages[i].isRendered) ...[
+          ?reloaded.pages[i].backgroundImage,
+          ...reloaded.pages[i].images,
+        ],
+    ];
+
+    await Future.wait([
+      for (final image in toLoad)
+        image
+            .loadIn()
+            .then((_) => mounted ? image.precache(context) : null)
+            .catchError((Object e) {
+              // It loads again when shown, so don't hold up the reload.
+              log.warning('Could not preload image ${image.id}: $e');
+            }),
+    ]);
+    return toLoad.length;
   }
 
   void autosaveAfterDelay() {

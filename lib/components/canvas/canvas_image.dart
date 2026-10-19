@@ -89,6 +89,16 @@ class _CanvasImageState extends State<CanvasImage> {
     super.initState();
   }
 
+  @override
+  void didUpdateWidget(CanvasImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // e.g. the note was reloaded and this is the same image's new version
+    if (widget.image != oldWidget.image) {
+      oldWidget.image.loadOut();
+      widget.image.loadIn();
+    }
+  }
+
   void disableActive() {
     active = false;
   }
