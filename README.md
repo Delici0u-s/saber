@@ -19,8 +19,6 @@
 >   stroke's points, e.g. most of a straight line. ([`6005f64`](https://github.com/Delici0u-s/saber/commit/6005f64a))
 > - **Sync flicker:** an open note no longer flickers when changes from another device arrive (also
 >   while watching the server): pages, images and unchanged PDFs stay on screen. ([`6d6d1e7`](https://github.com/Delici0u-s/saber/commit/6d6d1e71))
-> - **Smooth strokes zoomed out:** strokes keep their full detail down to 0.5x zoom (upstream drops to
->   every 4th point below 0.9x, so handwriting showed corners at around 0.7x). ([`3e39cc4`](https://github.com/Delici0u-s/saber/commit/3e39cc4d))
 >
 > **Features**
 > - **Pressure-sized dots:** a tap's dot is as big as the hardest pressure applied, and taps are
