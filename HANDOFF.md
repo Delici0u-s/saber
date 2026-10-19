@@ -8,7 +8,7 @@ Where things stand, what's left, and how to set up a new machine.
 |---|---|---|---|---|
 | `Delici0u-s/saber` | `main` (only branch; `personal` deleted 2026-10-19) | see `git log` | yes | Fork features + lock on library `8808f44` |
 | `Delici0u-s/perfect-freehand-dart` | `personal` | `8808f44` | yes | PR + all tap fixes |
-| same | `fix/stationary-dots` | `92c70b3` | **no** (local only; remote is at `8e380a6`) | PR [#27](https://github.com/steveruizok/perfect-freehand-dart/pull/27) |
+| same | `fix/stationary-dots` | `92c70b3` | yes | PR [#27](https://github.com/steveruizok/perfect-freehand-dart/pull/27) |
 
 Saber gets `perfect_freehand` from the fork's **`personal`** branch via `dependency_overrides`
 in `pubspec.yaml`; `pubspec.lock` pins the commit (`flutter pub upgrade perfect_freehand` bumps it).
@@ -21,7 +21,7 @@ This does **not** switch to upstream by itself: see "When the PR is released" be
 | `79a500a` | Dots for stationary points with varying pressure (original PR) |
 | `640c910` | Test: stationary points golden |
 | `8e380a6` | A tap's dot sized by the highest pressure; points within `options.size` of the first count as one tap (squash of `bf82a2f`, `492156a`, `d6ef51f` on `personal`) |
-| `92c70b3` | **Lone point drawn as a round dot** (= `8808f44` on `personal`), not pushed yet |
+| `92c70b3` | **Lone point drawn as a round dot** (= `8808f44` on `personal`) |
 
 After `92c70b3`, `lib/` and `test/` on `fix/stationary-dots` are identical to `personal`.
 
@@ -39,15 +39,10 @@ All checks pass on both branches: 64 tests, `dart format`.
 
 ## What's left
 
-### 1. Push the PR update (online part, yours)
+### 1. PR comment (optional, yours)
 
-```sh
-cd ../perfect-freehand-dart
-git switch fix/stationary-dots
-git push origin fix/stationary-dots     # fast-forward, no force needed
-```
-
-Then a PR comment (`gh pr comment 27 -R steveruizok/perfect-freehand-dart --body "…"`), e.g.:
+`92c70b3` is pushed and listed on PR #27. If not done yet, add a comment
+(`gh pr comment 27 -R steveruizok/perfect-freehand-dart --body "…"`), e.g.:
 
 > Two more fixes for taps: points that stay within `size` of the first one now count as a single
 > tap at the highest pressure (a real tap drifts by a fraction of a pixel, so the dot came out at
