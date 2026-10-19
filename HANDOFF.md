@@ -65,6 +65,12 @@ raise `perfect_freehand: ^2.5.1` to that release, `flutter pub get`, test, commi
 Keep the override on `ref: personal` until then (not `fix/stationary-dots`): you control
 `personal`, while the PR branch may be rebased during review.
 
+### 4. Line styles for pen and pencil (to do)
+
+Several stroke styles to pick from in the pen and pencil tabs: solid (today's), dotted, dashed,
+and possibly others (e.g. dash-dot). Not started. Needs a per-stroke style saved in the note
+(so other devices draw it the same) and a picker in the tool options.
+
 ### Housekeeping
 
 - Saber has only `main` now (the README says the fork is personal and unmaintained). Note that
@@ -89,6 +95,12 @@ Keep the override on `ref: personal` until then (not `fix/stationary-dots`): you
   `LOCAL_DIRECTORY_NAME`), settings to `~/.local/share/<id>`; the Flathub Saber keeps
   `~/Documents/Saber`. Both sync to the same Nextcloud `Saber` folder if you log in to both.
   Update check is off. `LINUX_INSTALL_LABEL` in `dev.local.env` renames all of it.
+- **Android builds on the laptop** (set up 2026-10-19, no Android Studio): Google's command-line
+  tools in `~/Android/Sdk/cmdline-tools/latest`, NDK via `sdkmanager "ndk;28.2.13676358"`,
+  licenses via `flutter doctor --android-licenses`, and `JAVA_HOME=/usr/lib/jvm/java-21-openjdk`
+  in `scripts/dev.local.env` (fine: that `bin` has no `rustc`). If cargo reports `can't find
+  crate for core`, Gradle got `/usr/bin` first on PATH: check `JAVA_HOME` reaches Flutter, then
+  `cd android && ./gradlew --stop` so the daemon restarts with the right PATH.
 - The release app on the tablet isn't debuggable, so `run-as` (note decoding below) needs a
   `--debug` build.
 
@@ -143,7 +155,7 @@ cd .. && gh repo clone Delici0u-s/perfect-freehand-dart   # only needed to work 
 | Debug build (slow; for logs) | `scripts/dev.sh android --debug` |
 | Linux desktop (dev build from `build/`) | `scripts/dev.sh linux` |
 | Install / update "Saber (personalized)" for daily use (next to the Flathub Saber) | `scripts/dev.sh linux install` (`uninstall` removes it, keeps notes) |
-| Tests | `flutter test` (14 golden tests also fail on unmodified `main` outside Docker; `./test.sh` runs them in Docker) |
+| Tests | `flutter test` (20 golden tests also fail on unmodified `main` outside Docker, as of 2026-10-19; `./test.sh` runs them in Docker) |
 | Analyzer | `flutter analyze` (16 info-level lints are expected) |
 | After editing `lib/i18n/en.i18n.yaml` | `dart run slang` |
 | Library tests | `flutter test`, and `dart fix --compare-to-golden` inside `test_fixes/` (that's what CI runs) |

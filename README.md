@@ -15,6 +15,8 @@
 > - **Sync:** a save made while that note was uploading is now uploaded too (it used to be dropped). ([`09d1033`](https://github.com/Delici0u-s/saber/commit/09d1033c))
 > - **Pencil dots:** taps with the pencil now draw a dot (its taper used to shrink dots to nothing). ([`0ddece1`](https://github.com/Delici0u-s/saber/commit/0ddece13))
 > - **Fullscreen:** no more empty bar above the toolbar on Android. ([`3ec0923`](https://github.com/Delici0u-s/saber/commit/3ec09237))
+> - **Sync flicker:** an open note no longer flickers when changes from another device arrive (also
+>   while watching the server): pages, images and unchanged PDFs stay on screen. ([`6d6d1e7`](https://github.com/Delici0u-s/saber/commit/6d6d1e71))
 >
 > **Features**
 > - **Pressure-sized dots:** a tap's dot is as big as the hardest pressure applied, and taps are
@@ -40,7 +42,7 @@
 > - **Build script:** `scripts/dev.sh android|linux [build|install|run] [--debug]`. Machine-specific
 >   paths go in `scripts/dev.local.env` (see the script's header). Android installs keep app data and
 >   refuse to replace a differently signed (e.g. Play Store) install. `linux install`/`uninstall` add or remove it
->   next to the official Saber (see *Installing this fork* below). ([`83378a2`](https://github.com/Delici0u-s/saber/commit/83378a22), [`d66613d`](https://github.com/Delici0u-s/saber/commit/d66613dc))
+>   next to the official Saber (see *Installing this fork* below). ([`83378a2`](https://github.com/Delici0u-s/saber/commit/83378a22), [`d66613d`](https://github.com/Delici0u-s/saber/commit/d66613dc), [`e731873`](https://github.com/Delici0u-s/saber/commit/e7318730), [`5a852a2`](https://github.com/Delici0u-s/saber/commit/5a852a27))
 >
 > **Merged upstream pull requests**
 > - [#1829](https://github.com/saber-notes/saber/pull/1829): move selections between pages ([`ef7b0a5`](https://github.com/Delici0u-s/saber/commit/ef7b0a58))
