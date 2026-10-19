@@ -5,45 +5,49 @@
 > This is a local optimisation for my own use. It **won't be maintained**: no updates from upstream,
 > no support, no releases. Everything is on `main`.
 >
+> Commit links point to where each change was made.
+>
 > **Fixes**
 > - **Invisible dots:** pen taps on Android stylus devices now draw a dot. Fixed in
 >   [`perfect_freehand`](https://github.com/Delici0u-s/perfect-freehand-dart/tree/fix/stationary-dots)
 >   (upstream PR [#27](https://github.com/steveruizok/perfect-freehand-dart/pull/27)), which
->   `pubspec.yaml` overrides as a git dependency. Remove the override once a release includes it.
-> - **Sync:** a save made while that note was uploading is now uploaded too (it used to be dropped).
-> - **Pencil dots:** taps with the pencil now draw a dot (its taper used to shrink dots to nothing).
-> - **Fullscreen:** no more empty bar above the toolbar on Android.
+>   `pubspec.yaml` overrides as a git dependency. Remove the override once a release includes it. ([`79a500a`](https://github.com/Delici0u-s/perfect-freehand-dart/commit/79a500a), [`640c910`](https://github.com/Delici0u-s/perfect-freehand-dart/commit/640c910); here [`8304217`](https://github.com/Delici0u-s/saber/commit/8304217b), [`83378a2`](https://github.com/Delici0u-s/saber/commit/83378a22))
+> - **Sync:** a save made while that note was uploading is now uploaded too (it used to be dropped). ([`09d1033`](https://github.com/Delici0u-s/saber/commit/09d1033c))
+> - **Pencil dots:** taps with the pencil now draw a dot (its taper used to shrink dots to nothing). ([`0ddece1`](https://github.com/Delici0u-s/saber/commit/0ddece13))
+> - **Fullscreen:** no more empty bar above the toolbar on Android. ([`3ec0923`](https://github.com/Delici0u-s/saber/commit/3ec09237))
 >
 > **Features**
 > - **Pressure-sized dots:** a tap's dot is as big as the hardest pressure applied, and taps are
->   drawn round (also in `perfect_freehand` PR #27).
+>   drawn round (also in `perfect_freehand` PR #27). ([`8e380a6`](https://github.com/Delici0u-s/perfect-freehand-dart/commit/8e380a6), [`92c70b3`](https://github.com/Delici0u-s/perfect-freehand-dart/commit/92c70b3); here [`696e65c`](https://github.com/Delici0u-s/saber/commit/696e65cf), [`6df0724`](https://github.com/Delici0u-s/saber/commit/6df0724f), [`b65411f`](https://github.com/Delici0u-s/saber/commit/b65411f2))
 > - **Sync while open:** checks Nextcloud for changes every minute (setting *Check for changes*), when the
 >   app is resumed and, with *Sync on save*, after each save. The open note reloads when a newer version
->   arrives and it has no unsaved changes.
+>   arrives and it has no unsaved changes. ([`09d1033`](https://github.com/Delici0u-s/saber/commit/09d1033c))
 > - **Selection:** one selection button; tap it again to pick lasso or box selection.
->   The selection and eraser buttons show the active mode's icon.
-> - **Eraser outline:** a dashed circle shows the eraser's size while erasing.
+>   The selection and eraser buttons show the active mode's icon. ([`59641c0`](https://github.com/Delici0u-s/saber/commit/59641c04))
+> - **Eraser outline:** a dashed circle shows the eraser's size while erasing. ([`a671383`](https://github.com/Delici0u-s/saber/commit/a6713837))
 > - **Crop images:** *Crop* in an image's long-press menu (pictures only). Crops the pixels, so the result
->   looks the same in other Saber versions; undo restores the original.
+>   looks the same in other Saber versions; undo restores the original. ([`256e423`](https://github.com/Delici0u-s/saber/commit/256e423e))
 > - **Hold to shape:** hold any pen still at the end of a stroke (setting *Hold to shape*, default 1s)
->   to turn it into a line, rectangle, circle, triangle or star.
-> - **Real size:** a HUD button (top left, next to the zoom lock) zooms so an A4-wide page shows at its
->   physical size. Uses Android's screen density, or the *Screen density* setting.
+>   to turn it into a line, rectangle, circle, triangle or star. ([`8c142f2`](https://github.com/Delici0u-s/saber/commit/8c142f25))
+> - **Real size:** a HUD button (top left, next to the zoom lock) zooms so a page shows at its
+>   physical size: A4 wide, or the paper picked in the *Real size paper* setting (A5, B5, Letter, A3).
+>   Uses the screen density reported by Android or by the monitor on Linux, or the *Screen density*
+>   setting. ([`bac4cb5`](https://github.com/Delici0u-s/saber/commit/bac4cb52), [`453e918`](https://github.com/Delici0u-s/saber/commit/453e9182))
 > - **Paper spacings:** background line height is shown in mm, with presets (5, 6, 7, 8, 10 mm,
->   e.g. 5 mm squared paper). Spacing is a whole number of page units, so 5 mm is 5.04 mm.
+>   e.g. 5 mm squared paper). Spacing is a whole number of page units, so 5 mm is 5.04 mm. ([`9f9ec1b`](https://github.com/Delici0u-s/saber/commit/9f9ec1b9))
 > - **Finer settings:** line height and highlighter size step by 1; faster options for auto-save (2s)
->   and shape recognition (0.25s).
+>   and shape recognition (0.25s). ([`5462702`](https://github.com/Delici0u-s/saber/commit/54627021), [`55119c5`](https://github.com/Delici0u-s/saber/commit/55119c51))
 > - **Build script:** `scripts/dev.sh android|linux [build|install|run] [--debug]`. Machine-specific
 >   paths go in `scripts/dev.local.env` (see the script's header). Android installs keep app data and
 >   refuse to replace a differently signed (e.g. Play Store) install. `linux install`/`uninstall` add or remove it
->   next to the official Saber (see *Installing this fork* below).
+>   next to the official Saber (see *Installing this fork* below). ([`83378a2`](https://github.com/Delici0u-s/saber/commit/83378a22), [`d66613d`](https://github.com/Delici0u-s/saber/commit/d66613dc))
 >
 > **Merged upstream pull requests**
-> - [#1829](https://github.com/saber-notes/saber/pull/1829): move selections between pages
-> - [#1823](https://github.com/saber-notes/saber/pull/1823): prevent adding PDFs as images
+> - [#1829](https://github.com/saber-notes/saber/pull/1829): move selections between pages ([`ef7b0a5`](https://github.com/Delici0u-s/saber/commit/ef7b0a58))
+> - [#1823](https://github.com/saber-notes/saber/pull/1823): prevent adding PDFs as images ([`41e4682`](https://github.com/Delici0u-s/saber/commit/41e46828))
 > - [#1718](https://github.com/saber-notes/saber/pull/1718): box selection tool (without the PR's
->   colour bar restyle), adapted to #1829
-> - [#1761](https://github.com/saber-notes/saber/pull/1761): area eraser
+>   colour bar restyle), adapted to #1829 ([`a6d1984`](https://github.com/Delici0u-s/saber/commit/a6d19845))
+> - [#1761](https://github.com/saber-notes/saber/pull/1761): area eraser ([`f393cdd`](https://github.com/Delici0u-s/saber/commit/f393cdde))
 >
 > **AI assistance:** the investigation, fixes and features in this fork were made with help from
 > Claude (Anthropic). Code in this fork is for personal use and isn't submitted to Saber, whose
