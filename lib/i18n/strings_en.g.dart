@@ -1129,6 +1129,9 @@ class Translations$editor$toolbar$en {
 
 	/// en: 'Toggle fullscreen (F11)'
 	String get fullscreen => 'Toggle fullscreen (F11)';
+
+	/// en: 'Ruler'
+	String get ruler => 'Ruler';
 }
 
 // Path: editor.pens

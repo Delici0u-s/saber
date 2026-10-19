@@ -20,6 +20,7 @@ import 'package:saber/components/canvas/canvas.dart';
 import 'package:saber/components/canvas/canvas_gesture_detector.dart';
 import 'package:saber/components/canvas/canvas_image.dart';
 import 'package:saber/components/canvas/image/editor_image.dart';
+import 'package:saber/components/canvas/ruler.dart';
 import 'package:saber/components/canvas/save_indicator.dart';
 import 'package:saber/components/canvas/select_result.dart';
 import 'package:saber/components/editor/read_only_banner.dart';
@@ -107,6 +108,13 @@ class EditorState extends State<Editor> {
 
   final _canvasGestureDetectorKey = GlobalKey<CanvasGestureDetectorState>();
   final _transformationController = TransformationController();
+
+  /// A straight edge to draw along, toggled in the toolbar.
+  final ruler = Ruler();
+
+  /// The ruler edge the current stroke is drawn along, if it started there.
+  RulerEdge? _rulerEdge;
+
   double get scrollY {
     final transformation = _transformationController.value;
     final scale = transformation.approxScale;
@@ -630,9 +638,26 @@ class EditorState extends State<Editor> {
     page.redrawStrokes();
   }
 
+  /// [globalPosition] moved onto [_rulerEdge], if the current stroke
+  /// started there, so that the stroke runs along the ruler and touches it.
+  Offset _alongRuler(Offset globalPosition, EditorPage page) {
+    final edge = _rulerEdge;
+    if (edge == null) return globalPosition;
+    final pageBox = page.renderBox!;
+    final pageScale =
+        (pageBox.localToGlobal(const Offset(1, 0)) -
+                pageBox.localToGlobal(.zero))
+            .distance;
+    final halfWidth = (currentTool as Pen).options.size / 2 * pageScale;
+    return edge.project(globalPosition, gap: halfWidth);
+  }
+
   void onDrawStart(ScaleStartDetails details) {
     final page = coreInfo.pages[dragPageIndex!];
-    final position = page.renderBox!.globalToLocal(details.focalPoint);
+    _rulerEdge = currentTool is Pen ? ruler.edgeNear(details.focalPoint) : null;
+    final position = page.renderBox!.globalToLocal(
+      _alongRuler(details.focalPoint, page),
+    );
     history.canRedo = false;
 
     if (currentTool is Pen) {
@@ -684,7 +709,9 @@ class EditorState extends State<Editor> {
       return;
     }
     final page = coreInfo.pages[dragPageIndex!];
-    Offset position = page.renderBox!.globalToLocal(details.focalPoint);
+    Offset position = page.renderBox!.globalToLocal(
+      _alongRuler(details.focalPoint, page),
+    );
     Offset offset = position - previousPosition;
 
     if (currentTool is Pen) {
@@ -833,6 +860,7 @@ class EditorState extends State<Editor> {
   }
 
   void onDrawEnd(ScaleEndDetails details) {
+    _rulerEdge = null;
     if (dragPageIndex == null) {
       return;
     }
@@ -1728,6 +1756,7 @@ class EditorState extends State<Editor> {
       initialPageIndex: coreInfo.initialPageIndex,
       pageBuilder: pageBuilder,
       isTextEditing: () => currentTool == Tool.textEditing,
+      ruler: ruler,
       placeholderPageBuilder: (BuildContext context, int pageIndex) {
         return Canvas(
           path: coreInfo.filePath,
@@ -1929,6 +1958,7 @@ class EditorState extends State<Editor> {
             stows.editorFingerDrawing.value = !stows.editorFingerDrawing.value;
             lastSeenPointerCount = 0;
           },
+          ruler: ruler,
           pickPhoto: _pickPhotos,
           paste: paste,
           exportAsSba: exportAsSba,
@@ -2426,6 +2456,7 @@ class EditorState extends State<Editor> {
       Pen.onDetectedShapeChanged = null;
     }
     _lastSeenPointerCountTimer?.cancel();
+    ruler.dispose();
 
     _removeKeybindings();
 

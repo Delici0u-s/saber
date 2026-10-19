@@ -293,6 +293,7 @@ editor:
     export: Export (Ctrl Shift S)
     exportAs: "Export as:"
     fullscreen: Toggle fullscreen (F11)
+    ruler: Ruler
   pens:
     fountainPen: Fountain pen
     ballpointPen: Ballpoint pen

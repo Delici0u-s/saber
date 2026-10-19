@@ -9,6 +9,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:keybinder/keybinder.dart';
 import 'package:material_symbols_icons/symbols.dart';
+import 'package:saber/components/canvas/ruler.dart';
 import 'package:saber/components/theming/adaptive_icon.dart';
 import 'package:saber/components/theming/dynamic_material_app.dart';
 import 'package:saber/components/theming/uni_icon.dart';
@@ -47,6 +48,7 @@ class Toolbar extends StatefulWidget {
     required this.redo,
     required this.isRedoPossible,
     required this.toggleFingerDrawing,
+    required this.ruler,
     required this.pickPhoto,
     required this.paste,
     required this.duplicateSelection,
@@ -72,6 +74,9 @@ class Toolbar extends StatefulWidget {
   final bool isRedoPossible;
 
   final VoidCallback toggleFingerDrawing;
+
+  /// Shown or hidden by the ruler button.
+  final Ruler ruler;
 
   final VoidCallback pickPhoto;
 
@@ -531,6 +536,17 @@ class _ToolbarState extends State<Toolbar> {
                     );
                   },
                 ),
+              ListenableBuilder(
+                listenable: widget.ruler,
+                builder: (context, child) => ToolbarIconButton(
+                  tooltip: t.editor.toolbar.ruler,
+                  selected: widget.ruler.visible,
+                  onPressed: () => widget.ruler.visible = !widget.ruler.visible,
+                  padding: buttonPadding,
+                  child: child!,
+                ),
+                child: const Icon(Icons.straighten),
+              ),
               ToolbarIconButton(
                 tooltip: t.editor.toolbar.fullscreen,
                 selected: DynamicMaterialApp.isFullscreen,

@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:keybinder/keybinder.dart';
 import 'package:saber/components/canvas/hud/canvas_hud.dart';
 import 'package:saber/components/canvas/interactive_canvas.dart';
+import 'package:saber/components/canvas/ruler.dart';
 import 'package:saber/data/editor/page.dart';
 import 'package:saber/data/extensions/change_notifier_extensions.dart';
 import 'package:saber/data/extensions/matrix4_extensions.dart';
@@ -37,6 +38,7 @@ class CanvasGestureDetector extends StatefulWidget {
     required this.pageBuilder,
     required this.placeholderPageBuilder,
     required this.isTextEditing,
+    required this.ruler,
     TransformationController? transformationController,
   }) : _transformationController =
            transformationController ?? TransformationController();
@@ -67,6 +69,9 @@ class CanvasGestureDetector extends StatefulWidget {
   placeholderPageBuilder;
 
   final bool Function() isTextEditing;
+
+  /// Shown over the canvas when visible.
+  final Ruler ruler;
 
   late final TransformationController _transformationController;
 
@@ -580,6 +585,16 @@ class CanvasGestureDetectorState extends State<CanvasGestureDetector> {
                 );
               },
             ),
+          ),
+        ),
+        Positioned.fill(
+          child: RulerOverlay(
+            ruler: widget.ruler,
+            zoom: widget._transformationController,
+            pixelsPerMm: () =>
+                ScreenDensity.logicalPixelsPerMm *
+                widget._transformationController.value.approxScale /
+                realSizeScale,
           ),
         ),
         Positioned.fill(
