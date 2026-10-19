@@ -15,6 +15,8 @@
 > - **Sync:** a save made while that note was uploading is now uploaded too (it used to be dropped). ([`09d1033`](https://github.com/Delici0u-s/saber/commit/09d1033c))
 > - **Pencil dots:** taps with the pencil now draw a dot (its taper used to shrink dots to nothing). ([`0ddece1`](https://github.com/Delici0u-s/saber/commit/0ddece13))
 > - **Fullscreen:** no more empty bar above the toolbar on Android. ([`3ec0923`](https://github.com/Delici0u-s/saber/commit/3ec09237))
+> - **Area eraser:** cuts strokes exactly at its edge; it used to remove whole stretches between a
+>   stroke's points, e.g. most of a straight line. ([`6005f64`](https://github.com/Delici0u-s/saber/commit/6005f64a))
 > - **Sync flicker:** an open note no longer flickers when changes from another device arrive (also
 >   while watching the server): pages, images and unchanged PDFs stay on screen. ([`6d6d1e7`](https://github.com/Delici0u-s/saber/commit/6d6d1e71))
 >
@@ -31,6 +33,8 @@
 >   looks the same in other Saber versions; undo restores the original. ([`256e423`](https://github.com/Delici0u-s/saber/commit/256e423e))
 > - **Hold to shape:** hold any pen still at the end of a stroke (setting *Hold to shape*, default 1s)
 >   to turn it into a line, rectangle, circle, triangle or star. ([`8c142f2`](https://github.com/Delici0u-s/saber/commit/8c142f25))
+> - **Line styles:** solid, dashed, dotted or dash-dot strokes, picked in the pen and pencil tabs (each
+>   pen remembers its own). Other Saber versions draw these strokes solid. ([`6005f64`](https://github.com/Delici0u-s/saber/commit/6005f64a))
 > - **Real size:** a HUD button (top left, next to the zoom lock) zooms so a page shows at its
 >   physical size: A4 wide, or the paper picked in the *Real size paper* setting (A5, B5, Letter, A3).
 >   Uses the screen density reported by Android or by the monitor on Linux, or the *Screen density*

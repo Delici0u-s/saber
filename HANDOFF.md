@@ -65,11 +65,37 @@ raise `perfect_freehand: ^2.5.1` to that release, `flutter pub get`, test, commi
 Keep the override on `ref: personal` until then (not `fix/stationary-dots`): you control
 `personal`, while the PR branch may be rebased during review.
 
-### 4. Line styles for pen and pencil (to do)
+### 4. Line styles for pen and pencil (done, `6005f64a`)
 
-Several stroke styles to pick from in the pen and pencil tabs: solid (today's), dotted, dashed,
-and possibly others (e.g. dash-dot). Not started. Needs a per-stroke style saved in the note
-(so other devices draw it the same) and a picker in the tool options.
+Solid, dashed, dotted and dash-dot, picked in the pen tab (fountain and ballpoint pen) and the
+pencil tab; each pen remembers its own (`lastFountainPenLineStyle` etc.). The pattern lives in
+`LineStyle` (`lib/data/tools/line_style.dart`), in multiples of the stroke size. A stroke saves its
+style as `ls` (left out for solid), so other Saber versions draw these strokes solid. A styled stroke
+is drawn as one outline per dash or dot (`Stroke.splitIntoPieces`), also in PDF exports.
+Limits: shapes (hold to shape, shape pen) and the highlighter stay solid; a straight line from hold
+to shape keeps its style.
+Pressure is simulated along the whole stroke before it's cut into dashes, so dashes don't change
+width when the stroke is finished. The area eraser cuts at its edge and keeps each part's place in
+the pattern (`lo`, `Stroke.lineStyleOffset`). Tested on the laptop; not yet on the tablet.
+
+### 5. Ruler (to do)
+
+A ruler tool. Not started; what exactly it should do (a straight edge to draw along, measuring in
+mm, both) still needs deciding.
+
+### 6. Test on the devices (yours)
+
+- **Sync flicker** (`6d6d1e7`): tested on the laptop while watching the server, except the last
+  change: images to load before a reload are now picked by which pages are on screen. Reinstall
+  (`scripts/dev.sh linux install`) and check a reload of a note with images doesn't blink.
+- **Line styles and area eraser on the tablet** (`6005f64a`): draw dashed lines with the pen
+  (real pressure, unlike the laptop's mouse) and erase across them.
+- **Strokes with corners when zoomed out:** below 0.9x zoom Saber draws strokes from every 4th point
+  without smoothing (`_zoomThreshold` in `_canvas_painter.dart`, upstream behaviour). Seen on the
+  laptop at about 0.7x. Lowering that cutoff (e.g. a separate 0.5 for stroke detail) would fix it at
+  some speed cost; check how it looks on the tablet first.
+- **Tablet:** still on an older build. `scripts/dev.sh android install` brings the *Real size paper*
+  setting and the flicker fix.
 
 ### Housekeeping
 
