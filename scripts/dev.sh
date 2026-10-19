@@ -67,9 +67,12 @@ project_value() { # <file> <regex with one capture group>
 # Rust-based native assets. So prefer a JDK that isn't under /usr.
 pick_java_home() {
   if [[ -n "${JAVA_HOME:-}" && "$JAVA_HOME" != /usr* ]]; then return; fi
-  local jdk
-  jdk="$(find "$HOME/.gradle/jdks" -mindepth 3 -maxdepth 3 -path '*/bin/java' -printf '%h\n' 2>/dev/null \
-    | xargs -r -n1 dirname | sort -V | tail -n1)"
+  local jdk=""
+  # Guarded: with pipefail, a missing directory would exit the script without a message.
+  if [[ -d "$HOME/.gradle/jdks" ]]; then
+    jdk="$(find "$HOME/.gradle/jdks" -mindepth 3 -maxdepth 3 -path '*/bin/java' -printf '%h\n' 2>/dev/null \
+      | xargs -r -n1 dirname | sort -V | tail -n1)"
+  fi
   [[ -n "$jdk" ]] || die "no JDK outside /usr found; set JAVA_HOME in $LOCAL_ENV"
   export JAVA_HOME="$jdk"
 }
