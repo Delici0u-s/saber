@@ -67,20 +67,27 @@ Pressure is simulated along the whole stroke before it's cut into dashes, so das
 width when the stroke is finished. The area eraser cuts at its edge and keeps each part's place in
 the pattern (`lo`, `Stroke.lineStyleOffset`). Tested on the laptop; not yet on the tablet.
 
-### 4. Ruler (done, `06ddf45b`)
+### 4. Ruler (done, `06ddf45b`, `25f0d7fa`)
 
-A straight edge with mm marks, toggled by the ruler button in the toolbar (`Ruler` and
-`RulerOverlay` in `lib/components/canvas/ruler.dart`). It lives on the screen, over the canvas
-(`CanvasGestureDetector`), so it stays put while scrolling and isn't saved or exported.
-- **Move and rotate:** drag its middle; rotate with two fingers, a trackpad or the mouse wheel.
-  Rotation snaps to multiples of 15° within 2°; the angle shows on the 0 mark.
-- **Drawing along it:** a pen stroke (any `Pen`, incl. highlighter and pencil) started within
-  `Ruler.snapDistance` (16 px) of an edge, on either side, has every point moved onto that edge,
-  half the stroke's width outside it (`EditorState._alongRuler`). Pointers in that band pass
-  through the ruler to the canvas; only its middle (48 px) moves it.
+A ruler, try square or set square (Geodreieck) over the canvas (`Ruler`, `RulerOutline` and
+`RulerOverlay` in `lib/components/canvas/ruler.dart`; bar in `toolbar/ruler_modal.dart`). It lives
+on the screen (`CanvasGestureDetector`), so it stays put while scrolling and isn't saved or exported.
+- **Toolbar:** the ruler button shows it and opens a bar: shape, *Mark spacing* (mm between marks,
+  `rulerMarkSpacingMm`) and a hide button. Tapping the button again closes or reopens the bar.
+- **Move and rotate:** drag the body; drag the ring in its middle to rotate (snaps to multiples of
+  15° within 2°, angle shown in the ring); two fingers, a trackpad or the mouse wheel also rotate.
+- **Drawing along it:** a pen stroke (any `Pen`) started within the snap distance of a side, on
+  either side of it, has every point moved onto that side, half the stroke's width outside it, and
+  stops at the side's corners (`EditorState._alongRuler`, `RulerEdge.project`). Pointers in that
+  band pass through to the canvas. Snap distance is the *Ruler snap distance* setting
+  (`rulerSnapDistance`, 8–32 px); the ruler is a 48 px grab area plus a snap band on each side.
+- **Sizes:** the ruler reaches past the screen; the try square and set square scale with the
+  window's shorter side (`RulerOutline._bladeOfScreen`, `_setSquareOfScreen`), never smaller than
+  the ring needs.
 - **Marks:** millimetres on the page as the *Real size paper* setting defines them
-  (`ScreenDensity.logicalPixelsPerMm × zoom / realSizeScale`), so they're real mm at real size zoom.
-  Labels in cm, counted both ways from 0; finer marks and labels are left out when zoomed out.
+  (`ScreenDensity.logicalPixelsPerMm × zoom / realSizeScale`), so real mm at real size zoom. Every
+  5th and 10th mark longer, labels in cm; marks and labels are thinned out when they'd crowd, and
+  labels that would overlap the ring, a side, the protractor or another scale are left out.
 
 ### 5. Test on the devices (yours)
 
@@ -89,8 +96,10 @@ A straight edge with mm marks, toggled by the ruler button in the toolbar (`Rule
   (`scripts/dev.sh linux install`) and check a reload of a note with images doesn't blink.
 - **Line styles and area eraser on the tablet** (`6005f64a`): draw dashed lines with the pen
   (real pressure, unlike the laptop's mouse) and erase across them.
-- **Ruler** (`06ddf45b`): on the laptop and the tablet: move, rotate (two fingers / mouse wheel),
-  draw along both edges with the pen, and at *Real size* zoom, hold a real ruler to the screen to check its marks.
+- **Ruler** (`06ddf45b`, `25f0d7fa`): on the laptop and the tablet, each shape: move, rotate (ring,
+  two fingers, mouse wheel), draw along every side, change the mark spacing and the snap distance,
+  and at *Real size* zoom hold a real ruler to the screen to check the marks. Labels were only
+  checked in tests (with a placeholder font), so look at how they fit with the real font.
 - **Strokes with corners when zoomed out:** also in upstream Saber. Drawing in full detail down to
   0.5x zoom (`3e39cc4`) didn't make them look smoother on the laptop and was reverted (`1690a0c`),
   so the cause is elsewhere (maybe the mouse's coarse input). Check on the tablet with the pen.
