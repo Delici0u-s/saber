@@ -315,6 +315,7 @@ class Translations$editor$en {
 	// Translations
 	late final Translations$editor$toolbar$en toolbar = Translations$editor$toolbar$en.internal(_root);
 	late final Translations$editor$pens$en pens = Translations$editor$pens$en.internal(_root);
+	late final Translations$editor$rulerOptions$en rulerOptions = Translations$editor$rulerOptions$en.internal(_root);
 	late final Translations$editor$penOptions$en penOptions = Translations$editor$penOptions$en.internal(_root);
 	late final Translations$editor$eraserOptions$en eraserOptions = Translations$editor$eraserOptions$en.internal(_root);
 	late final Translations$editor$selectOptions$en selectOptions = Translations$editor$selectOptions$en.internal(_root);
@@ -739,6 +740,9 @@ class Translations$settings$prefLabels$en {
 	/// en: 'Real size paper'
 	String get realSizeWidthMm => 'Real size paper';
 
+	/// en: 'Ruler snap distance'
+	String get rulerSnapDistance => 'Ruler snap distance';
+
 	/// en: 'Check for changes'
 	String get syncPullInterval => 'Check for changes';
 
@@ -806,6 +810,9 @@ class Translations$settings$prefDescriptions$en {
 
 	/// en: 'The paper width 'real size' zoom shows a page at'
 	String get realSizeWidthMm => 'The paper width \'real size\' zoom shows a page at';
+
+	/// en: 'How close to the ruler a stroke has to start to be drawn along it'
+	String get rulerSnapDistance => 'How close to the ruler a stroke has to start to be drawn along it';
 
 	/// en: 'How often to check the server for changes while Saber is open (it always checks when opened)'
 	String get syncPullInterval => 'How often to check the server for changes while Saber is open (it always checks when opened)';
@@ -1159,6 +1166,25 @@ class Translations$editor$pens$en {
 
 	/// en: 'Laser pointer'
 	String get laserPointer => 'Laser pointer';
+}
+
+// Path: editor.rulerOptions
+class Translations$editor$rulerOptions$en {
+	Translations$editor$rulerOptions$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+	late final Translations$editor$rulerOptions$shapes$en shapes = Translations$editor$rulerOptions$shapes$en.internal(_root);
+
+	/// en: 'Mark spacing'
+	String get markSpacing => 'Mark spacing';
+
+	/// en: 'mm'
+	String get mm => 'mm';
+
+	/// en: 'Hide the ruler'
+	String get hide => 'Hide the ruler';
 }
 
 // Path: editor.penOptions
@@ -1630,6 +1656,24 @@ class Translations$login$encLoginStep$encFaq$2$en {
 
 	/// en: 'Yes, but keep in mind that it would be easier for the server administrator or someone else to access your notes if they gain access to your Nextcloud account.'
 	String get a => 'Yes, but keep in mind that it would be easier for the server administrator or someone else to access your notes if they gain access to your Nextcloud account.';
+}
+
+// Path: editor.rulerOptions.shapes
+class Translations$editor$rulerOptions$shapes$en {
+	Translations$editor$rulerOptions$shapes$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Ruler'
+	String get ruler => 'Ruler';
+
+	/// en: 'Try square'
+	String get trySquare => 'Try square';
+
+	/// en: 'Set square with protractor'
+	String get setSquare => 'Set square with protractor';
 }
 
 // Path: editor.penOptions.lineStyles

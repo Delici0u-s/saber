@@ -3,79 +3,130 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:saber/components/canvas/ruler.dart';
+import 'package:saber/data/flavor_config.dart';
+import 'package:saber/data/prefs.dart';
+
+/// Twice the area of [corners], positive if they run clockwise on screen.
+double _clockwiseArea(List<Offset> corners) {
+  var sum = 0.0;
+  for (var i = 0; i < corners.length; i++) {
+    final a = corners[i], b = corners[(i + 1) % corners.length];
+    sum += a.dx * b.dy - b.dx * a.dy;
+  }
+  return sum;
+}
 
 void main() {
-  const halfThickness = Ruler.thickness / 2;
+  TestWidgetsFlutterBinding.ensureInitialized();
+  FlavorConfig.setup();
 
-  group('RulerGeometry', () {
-    for (final degrees in [0, 30, 90, 135, -60]) {
-      final geometry = RulerGeometry(
-        center: const Offset(300, 200),
-        angle: degrees * pi / 180,
-      );
-      Offset at({required double along, required double across}) =>
-          geometry.center +
-          geometry.direction * along +
-          geometry.normal * across;
+  const ringInner = 20.0, ringOuter = 44.0;
+  const overlays = [Size(800, 600), Size(120, 900), Size(3000, 80), Size.zero];
 
-      group('at $degrees°', () {
-        test('the middle moves the ruler, the edges don\'t', () {
-          expect(geometry.grabs(at(along: 1000, across: 0)), isTrue);
-          expect(
-            geometry.grabs(at(along: -50, across: halfThickness - 1)),
-            isFalse,
-          );
-          expect(
-            geometry.grabs(at(along: 0, across: halfThickness + 1)),
-            isFalse,
-          );
-        });
+  for (final shape in RulerShape.values) {
+    for (final overlay in overlays) {
+      for (final snapDistance in [8.0, 16.0, 32.0]) {
+        group('$shape in $overlay, snapping at $snapDistance', () {
+          final outline = RulerOutline.of(shape, (
+            snapDistance: snapDistance,
+            ringInner: ringInner,
+            ringOuter: ringOuter,
+            overlay: overlay,
+          ));
 
-        test('a stroke starts on an edge within the snap distance', () {
-          for (final side in [1.0, -1.0]) {
-            for (final across in [
-              halfThickness - Ruler.snapDistance + 0.5,
-              halfThickness,
-              halfThickness + Ruler.snapDistance - 0.5,
-            ]) {
-              final edge = geometry.edgeNear(
-                at(along: 40, across: side * across),
-              );
-              expect(edge?.side, side, reason: 'across $across on $side');
+          test('runs clockwise, with every side pointing outward', () {
+            expect(_clockwiseArea(outline.corners), greaterThan(0));
+            for (final side in outline.sides) {
+              final middle = (side.start + side.end) / 2;
+              expect(outline.path.contains(middle + side.outward), isFalse);
+              expect(outline.path.contains(middle - side.outward), isTrue);
             }
-          }
-          expect(geometry.edgeNear(at(along: 0, across: 0)), isNull);
-          expect(
-            geometry.edgeNear(
-              at(along: 0, across: halfThickness + Ruler.snapDistance + 1),
-            ),
-            isNull,
-          );
-        });
+          });
 
-        test('projects points onto the edge, a gap away from it', () {
-          final edge = geometry.edgeNear(at(along: 0, across: -halfThickness))!;
-          for (final point in [
-            at(along: 120, across: -halfThickness - 10),
-            at(along: -900, across: -halfThickness + 7),
-            at(along: 3, across: -200),
-          ]) {
-            final projected = edge.project(point, gap: 2.5);
-            expect(
-              geometry.along(projected),
-              closeTo(geometry.along(point), 1e-9),
-            );
-            expect(
-              geometry.across(projected),
-              closeTo(-halfThickness - 2.5, 1e-9),
-            );
+          test('the ring is inside, with room to snap around it', () {
+            if (shape == .ruler) {
+              // The ruler is only as wide as its grab area and snap bands.
+              expect(outline.path.contains(.zero), isTrue);
+              return;
+            }
+            for (final side in outline.sides) {
+              expect(
+                side.distanceTo(.zero),
+                greaterThanOrEqualTo(ringOuter + snapDistance - 1e-9),
+              );
+            }
+          });
+
+          test('strokes snap to each side from either side of it', () {
+            for (final side in outline.sides) {
+              final middle = (side.start + side.end) / 2;
+              for (final across in [
+                -snapDistance + 0.5,
+                0.0,
+                snapDistance - 0.5,
+              ]) {
+                final point = middle + side.outward * across;
+                if (point.distance <= ringOuter) continue;
+                expect(outline.edgeNear(point, snapDistance), side);
+                expect(outline.grabs(point, snapDistance), isFalse);
+              }
+              final away = middle + side.outward * (snapDistance + 1);
+              expect(outline.edgeNear(away, snapDistance), isNull);
+            }
+          });
+
+          test('the ring rotates, its hole moves the ruler', () {
+            const ringMiddle = Offset((ringInner + ringOuter) / 2, 0);
+            expect(outline.inRing(ringMiddle), isTrue);
+            expect(outline.grabs(ringMiddle, snapDistance), isFalse);
+            expect(outline.edgeNear(ringMiddle, snapDistance), isNull);
+            expect(outline.grabs(.zero, snapDistance), isTrue);
+          });
+
+          if (outline.protractor case final protractor?) {
+            test('the protractor fits inside, away from the ring', () {
+              expect(protractor.radius, greaterThan(ringOuter));
+              // The short sides; the long one goes through its centre.
+              for (final side in outline.sides.skip(1)) {
+                expect(
+                  side.distanceTo(protractor.center),
+                  greaterThanOrEqualTo(protractor.radius),
+                );
+              }
+            });
           }
         });
-      });
+      }
     }
+  }
+
+  group('RulerEdge', () {
+    const edge = RulerEdge(start: Offset.zero, end: Offset(100, 100));
+
+    test('projects points onto the side, a gap outside it', () {
+      for (final point in const [
+        Offset(80, 20),
+        Offset(-10, 60),
+        Offset(50, 50),
+      ]) {
+        final projected = edge.project(point, gap: 3);
+        expect(edge.distanceTo(projected), closeTo(3, 1e-9));
+        expect(
+          (projected - edge.outward * 3 - edge.closestPoint(point)).distance,
+          closeTo(0, 1e-9),
+        );
+      }
+    });
+
+    test('stops at its ends', () {
+      expect(edge.project(const Offset(500, 400)), const Offset(100, 100));
+      expect(edge.project(const Offset(-50, -80)), Offset.zero);
+    });
   });
 
   group('Ruler', () {
+    setUp(() => stows.lastRulerShape.value = RulerShape.ruler.name);
+
     test('rotating snaps to nearby multiples of 15°', () {
       final ruler = Ruler();
       ruler.rotateTo(31 * pi / 180);
@@ -94,19 +145,33 @@ void main() {
       expect(ruler.displayedDegrees, 165);
     });
 
-    test('shows angles counterclockwise from 0 to 179', () {
+    test('shows angles counterclockwise, within its symmetry', () {
       final ruler = Ruler();
-      for (final (degrees, displayed) in [
-        (0, 0),
-        (-30, 30),
-        (30, 150),
-        (-180, 0),
-        (-270, 90),
-        (450, 90),
+      for (final (shape, degrees, displayed) in [
+        (RulerShape.ruler, 0, 0),
+        (RulerShape.ruler, -30, 30),
+        (RulerShape.ruler, 30, 150),
+        (RulerShape.ruler, -270, 90),
+        (RulerShape.setSquare, 30, 330),
+        (RulerShape.setSquare, -200, 200),
+        (RulerShape.trySquare, 450, 270),
       ]) {
-        ruler.rotateTo(degrees * pi / 180, snap: false);
-        expect(ruler.displayedDegrees, displayed, reason: '$degrees°');
+        ruler
+          ..shape = shape
+          ..rotateTo(degrees * pi / 180, snap: false);
+        expect(ruler.displayedDegrees, displayed, reason: '$shape $degrees°');
       }
+    });
+
+    test('converts to its own coordinates and back', () {
+      const size = Size(400, 300);
+      final ruler = Ruler()
+        ..moveBy(const Offset(30, -20), size)
+        ..rotateTo(1.1, snap: false);
+      const point = Offset(123, 45);
+      final there = ruler.toRuler(point, size);
+      expect((ruler.fromRuler(there, size) - point).distance, closeTo(0, 1e-9));
+      expect(ruler.toRuler(ruler.centerIn(size), size), Offset.zero);
     });
 
     test('stays inside the overlay', () {
@@ -124,8 +189,9 @@ void main() {
     late Ruler ruler;
     late List<PointerDownEvent> canvasDowns;
     var pixelsPerMm = 4.0;
+    const size = Size(800, 600);
 
-    Future<void> pumpOverlay(WidgetTester tester, Size size) async {
+    Future<void> pumpOverlay(WidgetTester tester, [Size size = size]) async {
       tester.view.physicalSize = size;
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
@@ -152,42 +218,89 @@ void main() {
       );
     }
 
+    double barHalf() =>
+        RulerOutline.barWidth(stows.rulerSnapDistance.value) / 2;
+
     setUp(() {
+      stows.lastRulerShape.value = RulerShape.ruler.name;
+      stows.rulerMarkSpacingMm.value = 1;
+      stows.rulerSnapDistance.value = 16;
       ruler = Ruler()..visible = true;
       canvasDowns = [];
       pixelsPerMm = 4;
     });
 
     testWidgets('dragging the middle moves the ruler', (tester) async {
-      const size = Size(800, 600);
-      await pumpOverlay(tester, size);
+      await pumpOverlay(tester);
       final start = ruler.centerIn(size);
-      await tester.dragFrom(start + const Offset(100, 0), const Offset(30, 50));
+      await tester.dragFrom(start + const Offset(200, 0), const Offset(30, 50));
       expect(ruler.centerIn(size), start + const Offset(30, 50));
+      expect(ruler.angle, 0);
       expect(canvasDowns, isEmpty);
     });
 
-    testWidgets('pointers near an edge reach the canvas', (tester) async {
-      const size = Size(800, 600);
-      await pumpOverlay(tester, size);
-      final edge = ruler.centerIn(size) + const Offset(0, halfThickness - 2);
+    testWidgets('dragging the ring rotates the ruler', (tester) async {
+      await pumpOverlay(tester);
+      final center = ruler.centerIn(size);
+      final outline = ruler.outline!;
+      final radius = (outline.ringInner + outline.ringOuter) / 2;
+      final gesture = await tester.startGesture(center + Offset(radius, 0));
+      // A quarter turn clockwise, along the ring.
+      for (var degrees = 5; degrees <= 90; degrees += 5) {
+        await gesture.moveTo(
+          center + Offset.fromDirection(degrees * pi / 180, radius),
+        );
+      }
+      await gesture.up();
+      await tester.pump();
+      expect(ruler.centerIn(size), center);
+      expect(ruler.angle, closeTo(pi / 2, 1e-9));
+      expect(ruler.displayedDegrees, 90);
+      expect(canvasDowns, isEmpty);
+    });
+
+    testWidgets('pointers near a side reach the canvas', (tester) async {
+      await pumpOverlay(tester);
+      final edge = ruler.centerIn(size) + Offset(200, barHalf() - 2);
       await tester.tapAt(edge);
       expect(canvasDowns, hasLength(1));
-      expect(ruler.edgeNear(edge)?.side, 1);
+      final projected = ruler.edgeNear(edge)!.project(edge, gap: 3);
+      expect(
+        (projected - (ruler.centerIn(size) + Offset(200, barHalf() + 3)))
+            .distance,
+        closeTo(0, 1e-9),
+      );
+    });
+
+    testWidgets('strokes follow a rotated set square', (tester) async {
+      stows.lastRulerShape.value = RulerShape.setSquare.name;
+      ruler.rotateTo(0.3, snap: false);
+      await pumpOverlay(tester);
+      final longSide = ruler.outline!.sides.first;
+      final start = ruler.fromRuler(
+        (longSide.start + longSide.end) / 2 + const Offset(40, -5),
+        size,
+      );
+      final snap = ruler.edgeNear(start)!;
+      expect(snap.edge, longSide);
+      for (final point in [start, start + const Offset(60, 10)]) {
+        final local = ruler.toRuler(snap.project(point, gap: 2), size);
+        expect(longSide.distanceTo(local), closeTo(2, 1e-6));
+      }
     });
 
     testWidgets('the mouse wheel rotates the ruler', (tester) async {
-      const size = Size(800, 600);
-      await pumpOverlay(tester, size);
+      await pumpOverlay(tester);
       final pointer = TestPointer(1, .mouse);
-      await tester.sendEventToBinding(pointer.hover(ruler.centerIn(size)));
+      await tester.sendEventToBinding(
+        pointer.hover(ruler.centerIn(size) + const Offset(200, 0)),
+      );
       await tester.sendEventToBinding(pointer.scroll(const Offset(0, 20)));
       expect(ruler.displayedDegrees, 179);
     });
 
     testWidgets('hidden, it lets everything through', (tester) async {
-      const size = Size(800, 600);
-      await pumpOverlay(tester, size);
+      await pumpOverlay(tester);
       ruler.visible = false;
       await tester.pump();
       await tester.tapAt(ruler.centerIn(size));
@@ -195,14 +308,21 @@ void main() {
       expect(ruler.edgeNear(ruler.centerIn(size)), isNull);
     });
 
-    for (final size in [const Size(120, 900), const Size(3000, 200)]) {
-      for (final zoom in [0.05, 1.0, 400.0]) {
-        testWidgets('draws at $size, $zoom px per mm', (tester) async {
-          pixelsPerMm = zoom;
-          ruler.rotateTo(0.4);
-          await pumpOverlay(tester, size);
-          expect(tester.takeException(), isNull);
-        });
+    for (final shape in RulerShape.values) {
+      for (final overlay in const [Size(120, 900), Size(3000, 200)]) {
+        for (final (zoom, spacing) in [(0.05, 1.0), (4.0, 7.0), (400.0, 0.3)]) {
+          testWidgets(
+            'draws $shape at $overlay, $zoom px/mm, marks every $spacing mm',
+            (tester) async {
+              stows.lastRulerShape.value = shape.name;
+              stows.rulerMarkSpacingMm.value = spacing;
+              pixelsPerMm = zoom;
+              ruler.rotateTo(0.4);
+              await pumpOverlay(tester, overlay);
+              expect(tester.takeException(), isNull);
+            },
+          );
+        }
       }
     }
   });

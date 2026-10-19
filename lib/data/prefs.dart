@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:perfect_freehand/perfect_freehand.dart';
+import 'package:saber/components/canvas/ruler.dart';
 import 'package:saber/components/home/home_layout_button.dart';
 import 'package:saber/components/home/sort_button.dart';
 import 'package:saber/components/navbar/responsive_navbar.dart';
@@ -287,6 +288,28 @@ class Stows {
   final lastSelectBoxMode = PlainStow(
     'lastSelectBoxMode',
     false,
+    volatile: !_isOnMainIsolate,
+  );
+
+  /// The [RulerShape] last picked, by name.
+  final lastRulerShape = PlainStow(
+    'lastRulerShape',
+    RulerShape.ruler.name,
+    volatile: !_isOnMainIsolate,
+  );
+
+  /// Millimetres (on the page) between a ruler's marks.
+  final rulerMarkSpacingMm = PlainStow(
+    'rulerMarkSpacingMm',
+    1.0,
+    volatile: !_isOnMainIsolate,
+  );
+
+  /// How close (in logical pixels) to a ruler's side a stroke has to start,
+  /// on either side of it, to be drawn along it.
+  final rulerSnapDistance = PlainStow(
+    'rulerSnapDistance',
+    16.0,
     volatile: !_isOnMainIsolate,
   );
   static StrokeOptions _strokeOptionsFromJson(Object json) =>

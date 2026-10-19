@@ -126,6 +126,7 @@ settings:
     syncOnSave: Sync on save
     screenDpi: Screen density
     realSizeWidthMm: Real size paper
+    rulerSnapDistance: Ruler snap distance
     syncPullInterval: Check for changes
     shapeRecognitionDelay: Shape recognition delay
     holdToShape: Hold to shape
@@ -150,6 +151,7 @@ settings:
     syncOnSave: When a note is saved, also check the server for changes from other devices
     screenDpi: Pixels per inch used for 'real size' zoom. Auto uses the value reported by your device
     realSizeWidthMm: The paper width 'real size' zoom shows a page at
+    rulerSnapDistance: How close to the ruler a stroke has to start to be drawn along it
     syncPullInterval: How often to check the server for changes while Saber is open (it always checks when opened)
     shapeRecognitionDelay: How often to update the shape preview
     holdToShape: Hold any pen still at the end of a stroke to turn it into a shape
@@ -301,6 +303,14 @@ editor:
     pencil: Pencil
     shapePen: Shape pen
     laserPointer: Laser pointer
+  rulerOptions:
+    shapes:
+      ruler: Ruler
+      trySquare: Try square
+      setSquare: Set square with protractor
+    markSpacing: Mark spacing
+    mm: mm
+    hide: Hide the ruler
   penOptions:
     size: Size
     lineStyles:

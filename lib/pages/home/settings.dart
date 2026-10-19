@@ -444,6 +444,16 @@ class _SettingsPageState extends State<SettingsPage> {
                   ],
                 ),
                 SettingsSelection(
+                  title: t.settings.prefLabels.rulerSnapDistance,
+                  subtitle: t.settings.prefDescriptions.rulerSnapDistance,
+                  icon: Symbols.straighten,
+                  pref: stows.rulerSnapDistance,
+                  options: [
+                    for (final px in const [8.0, 16.0, 24.0, 32.0])
+                      ToggleButtonsOption(px, Text('${px.round()} px')),
+                  ],
+                ),
+                SettingsSelection(
                   title: t.settings.prefLabels.editorToolbarAlignment,
                   subtitle:
                       t.settings.axisDirections[_SettingsStows
