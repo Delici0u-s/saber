@@ -9,6 +9,7 @@ import 'package:saber/components/home/home_layout_button.dart';
 import 'package:saber/components/home/sort_button.dart';
 import 'package:saber/components/navbar/responsive_navbar.dart';
 import 'package:saber/data/codecs/base64_codec.dart';
+import 'package:saber/data/editor/page.dart';
 import 'package:saber/data/flavor_config.dart';
 import 'package:saber/data/quota.dart';
 import 'package:saber/data/sentry/sentry_consent.dart';
@@ -163,27 +164,28 @@ class Stows {
   );
 
   /// Whether saving a note also checks the server for changes.
-  final syncOnSave = PlainStow(
-    'syncOnSave',
-    true,
+  final syncOnSave = PlainStow('syncOnSave', true, volatile: !_isOnMainIsolate);
+
+  /// Logical pixels per inch of the screen for showing pages at real size,
+  /// or -1 to use the value reported by the platform (or a typical one).
+  final screenDpi = PlainStow('screenDpi', -1.0, volatile: !_isOnMainIsolate);
+
+  /// The physical width (mm) that "real size" zoom shows a default page at,
+  /// see [EditorPage.paperWidthsMm].
+  final realSizeWidthMm = PlainStow(
+    'realSizeWidthMm',
+    EditorPage.defaultWidthMm,
     volatile: !_isOnMainIsolate,
   );
 
   /// How often (in seconds) to check the server for changes while the app is
   /// open, or -1 to only check on startup, resume and save.
-  /// Logical pixels per inch of the screen for showing pages at real size,
-  /// or -1 to use the value reported by the platform (or a typical one).
-  final screenDpi = PlainStow(
-    'screenDpi',
-    -1.0,
-    volatile: !_isOnMainIsolate,
-  );
-
   final syncPullInterval = PlainStow(
     'syncPullInterval',
     60,
     volatile: !_isOnMainIsolate,
   );
+
   /// How long (ms) to hold a pen still before its stroke becomes a shape,
   /// or -1 to disable "hold to shape".
   final holdToShapeDelay = PlainStow(

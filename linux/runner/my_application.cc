@@ -7,6 +7,7 @@
 struct _MyApplication {
   GtkApplication parent_instance;
   char** dart_entrypoint_arguments;
+  FlMethodChannel* display_channel;
 };
 
 G_DEFINE_TYPE(MyApplication, my_application, GTK_TYPE_APPLICATION)
@@ -15,6 +16,35 @@ G_DEFINE_TYPE(MyApplication, my_application, GTK_TYPE_APPLICATION)
 static void first_frame_cb(MyApplication* self, FlView *view)
 {
   gtk_widget_show(gtk_widget_get_toplevel(GTK_WIDGET(view)));
+}
+
+// Logical pixels per inch of the monitor showing [view], so pages can be
+// shown at their real size, or null if the monitor doesn't report its size.
+static FlValue* logical_pixels_per_inch(FlView* view) {
+  GdkWindow* window = gtk_widget_get_window(GTK_WIDGET(view));
+  if (window == nullptr) return fl_value_new_null();
+  GdkMonitor* monitor =
+      gdk_display_get_monitor_at_window(gdk_window_get_display(window), window);
+  if (monitor == nullptr) return fl_value_new_null();
+
+  const int width_mm = gdk_monitor_get_width_mm(monitor);
+  if (width_mm <= 0) return fl_value_new_null();
+  // The geometry is in logical pixels, like Flutter's.
+  GdkRectangle geometry;
+  gdk_monitor_get_geometry(monitor, &geometry);
+  return fl_value_new_float(geometry.width * 25.4 / width_mm);
+}
+
+static void display_method_call_cb(FlMethodChannel* channel,
+                                   FlMethodCall* method_call,
+                                   gpointer user_data) {
+  FlView* view = FL_VIEW(user_data);
+  if (g_strcmp0(fl_method_call_get_name(method_call), "logicalPixelsPerInch") == 0) {
+    g_autoptr(FlValue) result = logical_pixels_per_inch(view);
+    fl_method_call_respond_success(method_call, result, nullptr);
+  } else {
+    fl_method_call_respond_not_implemented(method_call, nullptr);
+  }
 }
 
 // Implements GApplication::activate.
@@ -44,6 +74,15 @@ static void my_application_activate(GApplication* application) {
   gtk_widget_realize(GTK_WIDGET(view));
 
   fl_register_plugins(FL_PLUGIN_REGISTRY(view));
+
+  // Physical screen density, so pages can be shown at their real size.
+  g_autoptr(FlStandardMethodCodec) codec = fl_standard_method_codec_new();
+  g_clear_object(&self->display_channel);
+  self->display_channel = fl_method_channel_new(
+      fl_engine_get_binary_messenger(fl_view_get_engine(view)),
+      "com.adilhanney.saber/display", FL_METHOD_CODEC(codec));
+  fl_method_channel_set_method_call_handler(
+      self->display_channel, display_method_call_cb, view, nullptr);
 
   gtk_widget_grab_focus(GTK_WIDGET(view));
 }
@@ -89,6 +128,7 @@ static void my_application_shutdown(GApplication* application) {
 static void my_application_dispose(GObject* object) {
   MyApplication* self = MY_APPLICATION(object);
   g_clear_pointer(&self->dart_entrypoint_arguments, g_strfreev);
+  g_clear_object(&self->display_channel);
   G_OBJECT_CLASS(my_application_parent_class)->dispose(object);
 }
 

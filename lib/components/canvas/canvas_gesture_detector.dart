@@ -77,14 +77,15 @@ class CanvasGestureDetector extends StatefulWidget {
   static const kMaxScale = 10.0;
 
   /// The zoom level at which a default-sized page, laid out in a container
-  /// [containerWidth] wide, is shown at its physical width.
+  /// [containerWidth] wide, is shown [widthMm] wide.
   static double realSizeScaleFor({
     required double containerWidth,
     required double logicalPixelsPerMm,
+    required double widthMm,
   }) {
     // At 1.0x, pages are as wide as the container but at most their own width.
     final laidOutWidth = min(EditorPage.defaultWidth, containerWidth);
-    return EditorPage.defaultWidthMm * logicalPixelsPerMm / laidOutWidth;
+    return widthMm * logicalPixelsPerMm / laidOutWidth;
   }
 
   static double getTopOfPage({
@@ -415,10 +416,11 @@ class CanvasGestureDetectorState extends State<CanvasGestureDetector> {
   }
 
   /// The zoom level at which a default-sized page is shown at its physical
-  /// size ([EditorPage.defaultWidthMm]) on this screen.
+  /// size ([Stows.realSizeWidthMm]) on this screen.
   double get realSizeScale => CanvasGestureDetector.realSizeScaleFor(
     containerWidth: containerBounds.maxWidth,
     logicalPixelsPerMm: ScreenDensity.logicalPixelsPerMm,
+    widthMm: stows.realSizeWidthMm.value,
   );
 
   /// Whether the zoom level is (close to) [realSizeScale].
@@ -428,7 +430,10 @@ class CanvasGestureDetectorState extends State<CanvasGestureDetector> {
       _scaleEpsilon;
 
   /// Zooms so that pages are shown at their physical size, see [realSizeScale].
-  void zoomToRealSize() {
+  Future<void> zoomToRealSize() async {
+    // The window may have moved to another monitor.
+    await ScreenDensity.refresh();
+    if (!mounted) return;
     final transformation = widget._transformationController.value;
     widget._transformationController.value =
         setZoom(

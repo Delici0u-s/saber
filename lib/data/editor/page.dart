@@ -24,6 +24,24 @@ class EditorPage extends ChangeNotifier implements HasSize {
   /// The physical width that [defaultWidth] stands for: an A4 page.
   static const defaultWidthMm = 210.0;
 
+  /// Paper widths in mm that "real size" zoom can show a default page at,
+  /// see [Stows.realSizeWidthMm].
+  static const paperWidthsMm = {
+    'A5': 148.0,
+    'B5': 176.0,
+    'A4': defaultWidthMm,
+    'Letter': 215.9,
+    'A3': 297.0,
+  };
+
+  /// The name of [widthMm] in [paperWidthsMm], or the width in mm.
+  static String paperName(double widthMm) =>
+      paperWidthsMm.entries
+          .where((paper) => paper.value == widthMm)
+          .firstOrNull
+          ?.key ??
+      '${widthMm.toStringAsFixed(0)} mm';
+
   /// Converts page units to millimetres on a default-sized page.
   static double unitsToMm(num units) => units * defaultWidthMm / defaultWidth;
 

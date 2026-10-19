@@ -5,7 +5,9 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:saber/components/canvas/hud/canvas_gesture_lock_btn.dart';
 import 'package:saber/components/canvas/hud/canvas_zoom_indicator.dart';
+import 'package:saber/data/editor/page.dart';
 import 'package:saber/data/extensions/matrix4_extensions.dart';
+import 'package:saber/data/prefs.dart';
 import 'package:saber/i18n/strings.g.dart';
 
 class CanvasHud extends HookWidget {
@@ -109,7 +111,11 @@ class CanvasHud extends HookWidget {
                         lock: isAtRealSize(),
                         setLock: (_) => zoomToRealSize!(),
                         icon: Symbols.straighten,
-                        tooltip: t.editor.hud.realSize,
+                        tooltip: t.editor.hud.realSize(
+                          paper: EditorPage.paperName(
+                            stows.realSizeWidthMm.value,
+                          ),
+                        ),
                       ),
                     ),
                 ],

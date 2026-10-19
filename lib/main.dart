@@ -97,7 +97,7 @@ Future<void> appRunner(List<String> args) async {
     stows.url.waitUntilRead(),
     stows.allowInsecureConnections.waitUntilRead(),
     PencilShader.init(),
-    ScreenDensity.init(),
+    ScreenDensity.refresh(),
     Printing.info().then((info) {
       Editor.canRasterPdf = info.canRaster;
     }),

@@ -18,12 +18,14 @@ abstract class ScreenDensity {
   static double get _fallback =>
       Platform.isAndroid || Platform.isIOS ? 160 : 96;
 
-  /// The density reported by the platform, if any. See [init].
+  /// The density reported by the platform, if any. See [refresh].
   static double? _reported;
 
   /// Reads the screen density from the platform, where available.
-  static Future<void> init() async {
-    if (!Platform.isAndroid) return;
+  /// On desktop, it is the density of the monitor showing the window,
+  /// so call this again before using it.
+  static Future<void> refresh() async {
+    if (!Platform.isAndroid && !Platform.isLinux) return;
     try {
       _reported = await _channel.invokeMethod<double>('logicalPixelsPerInch');
     } on Exception catch (e) {

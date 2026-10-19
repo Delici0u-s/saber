@@ -23,6 +23,7 @@ import 'package:saber/components/theming/adaptive_alert_dialog.dart';
 import 'package:saber/components/theming/adaptive_toggle_buttons.dart';
 import 'package:saber/components/theming/saber_theme.dart';
 import 'package:saber/components/theming/uni_icon.dart';
+import 'package:saber/data/editor/page.dart';
 import 'package:saber/data/file_manager/file_manager.dart';
 import 'package:saber/data/flavor_config.dart';
 import 'package:saber/data/is_this_a_test.dart';
@@ -430,6 +431,16 @@ class _SettingsPageState extends State<SettingsPage> {
                     ToggleButtonsOption(-1.0, Text(t.settings.screenDpiAuto)),
                     for (final dpi in const [96.0, 120.0, 160.0, 200.0, 240.0])
                       ToggleButtonsOption(dpi, Text(dpi.toStringAsFixed(0))),
+                  ],
+                ),
+                SettingsSelection(
+                  title: t.settings.prefLabels.realSizeWidthMm,
+                  subtitle: t.settings.prefDescriptions.realSizeWidthMm,
+                  icon: Symbols.description,
+                  pref: stows.realSizeWidthMm,
+                  options: [
+                    for (final paper in EditorPage.paperWidthsMm.entries)
+                      ToggleButtonsOption(paper.value, Text(paper.key)),
                   ],
                 ),
                 SettingsSelection(
