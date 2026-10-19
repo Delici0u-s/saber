@@ -6,7 +6,7 @@ Where things stand, what's left, and how to set up a new machine.
 
 | Repo (your forks) | Branch | Commit | Pushed? | What |
 |---|---|---|---|---|
-| `Delici0u-s/saber` | `personal` = `main` | see `git log` | yes | Fork features + lock on library `8808f44` |
+| `Delici0u-s/saber` | `main` (only branch; `personal` deleted 2026-10-19) | see `git log` | yes | Fork features + lock on library `8808f44` |
 | `Delici0u-s/perfect-freehand-dart` | `personal` | `8808f44` | yes | PR + all tap fixes |
 | same | `fix/stationary-dots` | `92c70b3` | **no** (local only; remote is at `8e380a6`) | PR [#27](https://github.com/steveruizok/perfect-freehand-dart/pull/27) |
 
@@ -72,8 +72,8 @@ Keep the override on `ref: personal` until then (not `fix/stationary-dots`): you
 
 ### Housekeeping
 
-- Keep Saber `main` level with `personal` after pushing:
-  `git switch main && git merge --ff-only personal && git push && git switch personal`.
+- Saber has only `main` now (the README says the fork is personal and unmaintained). Note that
+  `personal` in the library rows above means the **perfect-freehand-dart** branch, which stays.
 
 ### Gotchas
 

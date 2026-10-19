@@ -1,6 +1,9 @@
 > [!IMPORTANT]
-> **Personal fork** (`main` and `personal` branches): not the official Saber. For the real app, see
+> **Personal fork:** not the official Saber. For the real app, see
 > [saber-notes/saber](https://github.com/saber-notes/saber). I just applied some pull requests/features/https://github.com/steveruizok/perfect-freehand-dart/pull/27.
+>
+> This is a local optimisation for my own use. It **won't be maintained**: no updates from upstream,
+> no support, no releases. Everything is on `main`.
 >
 > **Fixes**
 > - **Invisible dots:** pen taps on Android stylus devices now draw a dot. Fixed in
@@ -12,8 +15,8 @@
 > - **Fullscreen:** no more empty bar above the toolbar on Android.
 >
 > **Features**
-> - **Pressure-sized dots:** a tap's dot is as big as the hardest pressure applied (from the fork's
->   `personal` branch of `perfect_freehand`, not part of the upstream PR).
+> - **Pressure-sized dots:** a tap's dot is as big as the hardest pressure applied, and taps are
+>   drawn round (also in `perfect_freehand` PR #27).
 > - **Sync while open:** checks Nextcloud for changes every minute (setting *Check for changes*), when the
 >   app is resumed and, with *Sync on save*, after each save. The open note reloads when a newer version
 >   arrives and it has no unsaved changes.
@@ -41,8 +44,8 @@
 >   colour bar restyle), adapted to #1829
 > - [#1761](https://github.com/saber-notes/saber/pull/1761): area eraser
 >
-> **AI assistance:** the investigation, fixes and features on this branch were made with help from
-> Claude (Anthropic). Code on this branch is for personal use and isn't submitted to Saber, whose
+> **AI assistance:** the investigation, fixes and features in this fork were made with help from
+> Claude (Anthropic). Code in this fork is for personal use and isn't submitted to Saber, whose
 > contributing guidelines don't accept AI-generated code.
 
 # <img src="https://github.com/saber-notes/saber/raw/main/assets/icon/icon.png" width="30" height="30" alt="Logo"> Saber
