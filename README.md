@@ -8,8 +8,12 @@
 >   (upstream PR [#27](https://github.com/steveruizok/perfect-freehand-dart/pull/27)), which
 >   `pubspec.yaml` overrides as a git dependency. Remove the override once a release includes it.
 > - **Sync:** a save made while that note was uploading is now uploaded too (it used to be dropped).
+> - **Pencil dots:** taps with the pencil now draw a dot (its taper used to shrink dots to nothing).
+> - **Fullscreen:** no more empty bar above the toolbar on Android.
 >
 > **Features**
+> - **Pressure-sized dots:** a tap's dot is as big as the hardest pressure applied (from the fork's
+>   `personal` branch of `perfect_freehand`, not part of the upstream PR).
 > - **Sync while open:** checks Nextcloud for changes every minute (setting *Check for changes*), when the
 >   app is resumed and, with *Sync on save*, after each save. The open note reloads when a newer version
 >   arrives and it has no unsaved changes.
