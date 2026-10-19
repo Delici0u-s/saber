@@ -128,16 +128,24 @@ class Eraser extends Tool {
       }
 
       if (remainingSegments.length == 1 &&
-          _isSameSegmentAsStroke(remainingSegments.first, stroke)) {
+          _isSameSegmentAsStroke(remainingSegments.first.points, stroke)) {
         _trackReplacementStroke(stroke);
         continue;
       }
 
-      stroke.replacePoints(remainingSegments.first);
+      // Each part keeps its place in the dash pattern, see [Stroke.lineStyleOffset].
+      final strokeOffset = stroke.lineStyleOffset;
+      stroke
+        ..lineStyleOffset = strokeOffset + remainingSegments.first.start
+        ..replacePoints(remainingSegments.first.points);
       _trackReplacementStroke(stroke);
 
       for (final segment in remainingSegments.skip(1)) {
-        final replacement = _strokeFromSegment(stroke, segment);
+        final replacement = _strokeFromSegment(
+          stroke,
+          segment.points,
+          lineStyleOffset: strokeOffset + segment.start,
+        );
         strokes.insert(i + 1, replacement);
         _trackReplacementStroke(replacement);
       }
@@ -156,75 +164,87 @@ class Eraser extends Tool {
     return result;
   }
 
-  static List<List<PointVector>> _remainingSegmentsAfterErase(
+  /// The parts of [stroke] outside the eraser, each with how far along the
+  /// stroke it starts. The stroke is cut where it crosses the eraser's edge,
+  /// so long segments (e.g. of a straight line) aren't removed whole.
+  static List<({List<PointVector> points, double start})>
+  _remainingSegmentsAfterErase(
     Stroke stroke,
     Offset eraserPos,
     double sqrSize,
   ) {
     final radius = sqrt(sqrSize);
-    final List<List<PointVector>> segments = [];
-    List<PointVector>? currentSegment;
     final points = stroke.pointVectors;
+    final segments = <({List<PointVector> points, double start})>[];
+    if (points.isEmpty) return segments;
 
-    bool pointInside(PointVector point) {
-      return _isPointInsideEraser(Offset(point.x, point.y), eraserPos, sqrSize);
+    bool isInside(PointVector point) =>
+        _isPointInsideEraser(Offset(point.x, point.y), eraserPos, sqrSize);
+
+    List<PointVector>? current;
+    var currentStart = 0.0;
+    void startAt(PointVector point, double start) {
+      current = [point];
+      currentStart = start;
     }
 
-    for (var i = 0; i < points.length; i++) {
-      final point = points[i];
-      final inside = pointInside(point);
-
-      if (!inside) {
-        currentSegment ??= [];
-        currentSegment.add(point);
-      }
-
-      if (i + 1 < points.length) {
-        final nextPoint = points[i + 1];
-        final nextInside = pointInside(nextPoint);
-
-        final shouldSplit =
-            !inside &&
-            !nextInside &&
-            _segmentIntersectsCircle(
-              Offset(point.x, point.y),
-              Offset(nextPoint.x, nextPoint.y),
-              eraserPos,
-              radius,
-            );
-
-        if (shouldSplit || (!inside && nextInside)) {
-          if (currentSegment != null) {
-            segments.add(currentSegment);
-            currentSegment = null;
-          }
-        }
-      }
+    void endAt(PointVector point) {
+      segments.add((points: current!..add(point), start: currentStart));
+      current = null;
     }
 
-    if (currentSegment != null) {
-      segments.add(currentSegment);
+    var length = 0.0;
+    if (!isInside(points.first)) startAt(points.first, 0);
+    for (var i = 1; i < points.length; i++) {
+      final from = points[i - 1], to = points[i];
+      final segmentLength = (to - from).distance;
+      final fromInside = isInside(from), toInside = isInside(to);
+      final crossings = _circleCrossings(from, to, eraserPos, radius);
+      PointVector at(double t) => from.lerp(t, to);
+
+      if (!fromInside && toInside) {
+        // entering the eraser
+        endAt(at(crossings?.enter ?? 1));
+      } else if (fromInside && !toInside) {
+        // leaving the eraser
+        final t = crossings?.leave ?? 0;
+        startAt(at(t), length + t * segmentLength);
+      } else if (!fromInside && !toInside && crossings != null) {
+        // passing through the eraser
+        endAt(at(crossings.enter));
+        startAt(at(crossings.leave), length + crossings.leave * segmentLength);
+      }
+      if (!toInside) current!.add(to);
+      length += segmentLength;
+    }
+
+    if (current != null) {
+      segments.add((points: current!, start: currentStart));
     }
     return segments;
   }
 
-  static bool _segmentIntersectsCircle(
+  /// Where the line from [from] to [to] enters and leaves the circle,
+  /// as fractions of the way from [from] to [to], or null if the line
+  /// doesn't pass through the circle between them.
+  static ({double enter, double leave})? _circleCrossings(
     Offset from,
     Offset to,
     Offset center,
     double radius,
   ) {
-    final dx = to.dx - from.dx;
-    final dy = to.dy - from.dy;
-    final l2 = dx * dx + dy * dy;
-    if (l2 == 0) {
-      return sqrDistanceBetween(from, center) <= radius * radius;
-    }
-
-    final t = ((center.dx - from.dx) * dx + (center.dy - from.dy) * dy) / l2;
-    final clampedT = t.clamp(0.0, 1.0);
-    final projection = Offset(from.dx + dx * clampedT, from.dy + dy * clampedT);
-    return sqrDistanceBetween(projection, center) <= radius * radius;
+    final d = to - from;
+    final f = from - center;
+    final a = d.dx * d.dx + d.dy * d.dy;
+    if (a == 0) return null;
+    final b = 2 * (f.dx * d.dx + f.dy * d.dy);
+    final c = f.dx * f.dx + f.dy * f.dy - radius * radius;
+    final discriminant = b * b - 4 * a * c;
+    if (discriminant <= 0) return null;
+    final root = sqrt(discriminant);
+    final enter = (-b - root) / (2 * a), leave = (-b + root) / (2 * a);
+    if (leave < 0 || enter > 1) return null;
+    return (enter: enter.clamp(0.0, 1.0), leave: leave.clamp(0.0, 1.0));
   }
 
   static bool _isSameSegmentAsStroke(List<PointVector> segment, Stroke stroke) {
@@ -240,7 +260,11 @@ class Eraser extends Tool {
     return a.x == b.x && a.y == b.y && a.pressure == b.pressure;
   }
 
-  static Stroke _strokeFromSegment(Stroke source, List<PointVector> segment) {
+  static Stroke _strokeFromSegment(
+    Stroke source,
+    List<PointVector> segment, {
+    required double lineStyleOffset,
+  }) {
     final replacement = Stroke(
       color: source.color,
       pressureEnabled: source.pressureEnabled,
@@ -248,6 +272,8 @@ class Eraser extends Tool {
       pageIndex: source.pageIndex,
       page: source.page,
       toolId: source.toolId,
+      lineStyle: source.lineStyle,
+      lineStyleOffset: lineStyleOffset,
     );
     for (final point in segment) {
       replacement.addPoint(Offset(point.x, point.y), point.pressure);

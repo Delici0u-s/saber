@@ -10,6 +10,7 @@ import 'package:saber/components/canvas/_circle_stroke.dart';
 import 'package:saber/components/canvas/_rectangle_stroke.dart';
 import 'package:saber/data/extensions/list_extensions.dart';
 import 'package:saber/data/extensions/point_extensions.dart';
+import 'package:saber/data/tools/line_style.dart';
 import 'package:sbn/has_size.dart';
 import 'package:sbn/tool_id.dart';
 
@@ -33,22 +34,48 @@ class Stroke {
   Color color;
   bool pressureEnabled;
   final StrokeOptions options;
+  final LineStyle lineStyle;
 
+  /// How far into [lineStyle]'s pattern this stroke starts, in page units:
+  /// the length of the stroke the eraser cut off its start, so the dashes
+  /// that are left don't move.
+  double lineStyleOffset;
+
+  /// Whether this stroke is drawn in pieces (dashes or dots), see [lineStyle].
+  /// A dot stays a dot.
+  bool get isInPieces => lineStyle != .solid && !isDot;
+
+  /// The outline of each piece of a stroke that [isInPieces].
+  List<List<Offset>>? _lowQualityPieces, _highQualityPieces;
+  List<List<Offset>> get lowQualityPieces =>
+      _lowQualityPieces ??= getPieces(quality: .low);
+  List<List<Offset>> get highQualityPieces =>
+      _highQualityPieces ??= getPieces(quality: .high);
+
+  /// The stroke's outline. For a stroke in pieces, the outlines of all pieces
+  /// one after another: fine for hit testing, not for drawing.
   List<Offset>? _lowQualityPolygon, _highQualityPolygon;
-  List<Offset> get lowQualityPolygon =>
-      _lowQualityPolygon ??= getPolygon(quality: .low);
-  List<Offset> get highQualityPolygon =>
-      _highQualityPolygon ??= getPolygon(quality: .high);
+  List<Offset> get lowQualityPolygon => _lowQualityPolygon ??= isInPieces
+      ? lowQualityPieces.flattened.toList()
+      : getPolygon(quality: .low);
+  List<Offset> get highQualityPolygon => _highQualityPolygon ??= isInPieces
+      ? highQualityPieces.flattened.toList()
+      : getPolygon(quality: .high);
 
   Path? _lowQualityPath, _highQualityPath;
-  Path get lowQualityPath =>
-      _lowQualityPath ??= getPath(lowQualityPolygon, smooth: false);
-  Path get highQualityPath => _highQualityPath ??= getPath(highQualityPolygon);
+  Path get lowQualityPath => _lowQualityPath ??= isInPieces
+      ? _piecesPath(lowQualityPieces, smooth: false)
+      : getPath(lowQualityPolygon, smooth: false);
+  Path get highQualityPath => _highQualityPath ??= isInPieces
+      ? _piecesPath(highQualityPieces)
+      : getPath(highQualityPolygon);
 
   void shift(Offset offset) {
     if (offset == .zero) return;
 
     points.shift(offset);
+    _lowQualityPieces?.forEach((piece) => piece.shift(offset));
+    _highQualityPieces?.forEach((piece) => piece.shift(offset));
     _lowQualityPolygon?.shift(offset);
     _highQualityPolygon?.shift(offset);
     _lowQualityPath = _lowQualityPath?.shift(offset);
@@ -56,6 +83,8 @@ class Stroke {
   }
 
   void markPolygonNeedsUpdating() {
+    _lowQualityPieces = null;
+    _highQualityPieces = null;
     _lowQualityPolygon = null;
     _highQualityPolygon = null;
     _lowQualityPath = null;
@@ -69,6 +98,8 @@ class Stroke {
     required this.pageIndex,
     required this.page,
     required this.toolId,
+    this.lineStyle = .solid,
+    this.lineStyleOffset = 0,
   });
 
   factory fromJson(
@@ -148,6 +179,8 @@ class Stroke {
       pageIndex: pageIndex,
       page: page,
       toolId: toolId,
+      lineStyle: .fromJson(json['ls']),
+      lineStyleOffset: (json['lo'] as num?)?.toDouble() ?? 0,
     )..points.addAll(points);
   }
   Map<String, dynamic> toJson() {
@@ -162,6 +195,8 @@ class Stroke {
       'ty': toolId.id,
       'pe': pressureEnabled,
       'c': color.toARGB32(),
+      if (lineStyle != .solid) 'ls': lineStyle.name,
+      if (lineStyle != .solid && lineStyleOffset != 0) 'lo': lineStyleOffset,
     }..addAll(options.toJson());
   }
 
@@ -233,6 +268,25 @@ class Stroke {
       points.isNotEmpty &&
       points.every((point) => (point - points.first).distance <= options.size);
 
+  /// [options] without tapering, e.g. for a dot, which a taper (e.g. the
+  /// pencil's) would shrink to nothing.
+  StrokeOptions get _untaperedOptions => options.copyWith(
+    start: options.start.copyWith(taperEnabled: false, customTaper: null),
+    end: options.end.copyWith(taperEnabled: false, customTaper: null),
+  );
+
+  static StrokeOptions _optionsForQuality(
+    StrokeOptions options,
+    StrokeQuality quality,
+  ) => switch (quality) {
+    .low => options.copyWith(
+      simulatePressure: false,
+      smoothing: 0,
+      streamline: 0,
+    ),
+    .high => options,
+  };
+
   @protected
   List<Offset> getPolygon({required StrokeQuality quality}) {
     if (!pressureEnabled) {
@@ -241,27 +295,9 @@ class Stroke {
     final rememberSimulatedPressure =
         quality == .high && options.simulatePressure && options.isComplete;
 
-    // Tapering a dot (e.g. with the pencil) would shrink it to nothing.
-    final shapeOptions = isDot
-        ? options.copyWith(
-            start: options.start.copyWith(
-              taperEnabled: false,
-              customTaper: null,
-            ),
-            end: options.end.copyWith(taperEnabled: false, customTaper: null),
-          )
-        : options;
-
     final polygon = getStroke(
       skipPoints(points, quality.N),
-      options: switch (quality) {
-        .low => shapeOptions.copyWith(
-          simulatePressure: false,
-          smoothing: 0,
-          streamline: 0,
-        ),
-        .high => shapeOptions,
-      },
+      options: _optionsForQuality(isDot ? _untaperedOptions : options, quality),
       rememberSimulatedPressure: rememberSimulatedPressure,
     );
 
@@ -273,6 +309,114 @@ class Stroke {
     }
 
     return polygon;
+  }
+
+  /// The outline of each dash or dot of this stroke, see [lineStyle].
+  @protected
+  List<List<Offset>> getPieces({required StrokeQuality quality}) {
+    if (!pressureEnabled) {
+      options.simulatePressure = false;
+    }
+    // Each piece is drawn like a short, finished stroke without tapers.
+    final pieceOptions = _optionsForQuality(
+      _untaperedOptions,
+      quality,
+    ).copyWith(isComplete: true);
+
+    // Pressure is simulated along the whole stroke, like for a solid one:
+    // per piece, each would get its own, which changes once it's finished.
+    var line = skipPoints(points, quality.N);
+    if (pieceOptions.simulatePressure) {
+      if (quality == .high && options.isComplete) {
+        getPolygon(quality: quality); // remembers it in [points]
+        line = skipPoints(points, quality.N);
+      } else {
+        line = List.of(line);
+        getStroke(line, options: pieceOptions, rememberSimulatedPressure: true);
+      }
+    }
+
+    return [
+      for (final piece in splitIntoPieces(line, [
+        for (final length in lineStyle.pattern) length * options.size,
+      ], offset: lineStyleOffset))
+        getStroke(
+          piece,
+          options: pieceOptions.copyWith(simulatePressure: false),
+        ),
+    ];
+  }
+
+  /// Splits the line through [points] into the pieces that [pattern] draws:
+  /// lengths alternately drawn and skipped, starting with a drawn one, from
+  /// [offset] into the pattern. A drawn length of 0 gives a dot (two equal
+  /// points).
+  @visibleForTesting
+  static List<List<PointVector>> splitIntoPieces(
+    List<PointVector> points,
+    List<double> pattern, {
+    double offset = 0,
+  }) {
+    assert(pattern.length.isEven, 'pattern must end with a skipped length');
+    assert(
+      [for (var i = 1; i < pattern.length; i += 2) pattern[i]]
+          .every((gap) => gap > 0),
+      'skipped lengths must be positive',
+    );
+    if (points.isEmpty || pattern.isEmpty) return [points];
+
+    final pieces = <List<PointVector>>[];
+    var patternIndex = 0;
+    var remaining = pattern[0];
+    bool isDrawing() => patternIndex.isEven;
+
+    // Skip [offset] into the pattern.
+    var skip = offset % pattern.sum;
+    while (skip > 0 && skip >= remaining) {
+      skip -= remaining;
+      patternIndex = (patternIndex + 1) % pattern.length;
+      remaining = pattern[patternIndex];
+    }
+    remaining -= skip;
+    var piece = <PointVector>[if (isDrawing()) points.first];
+
+    for (var i = 1; i < points.length; i++) {
+      var from = points[i - 1];
+      final to = points[i];
+      var segmentLength = (to - from).distance;
+
+      while (segmentLength > remaining) {
+        final split = from.lerp(remaining / segmentLength, to);
+        if (isDrawing()) {
+          // A dash that ended exactly on a point already has its end;
+          // a dot (one point so far) needs its second one.
+          if (remaining > 0 || piece.length < 2) piece.add(split);
+          pieces.add(piece);
+        } else {
+          piece = [split];
+        }
+        segmentLength -= remaining;
+        from = split;
+        patternIndex = (patternIndex + 1) % pattern.length;
+        remaining = pattern[patternIndex];
+      }
+
+      remaining -= segmentLength;
+      if (isDrawing()) piece.add(to);
+    }
+    // The last dash, unless it only just started.
+    if (isDrawing() && piece.length >= 2) pieces.add(piece);
+    return pieces;
+  }
+
+  /// One path with each of [pieces], see [getPath].
+  Path _piecesPath(List<List<Offset>> pieces, {bool smooth = true}) {
+    final path = Path();
+    for (final piece in pieces) {
+      if (piece.isEmpty) continue;
+      path.addPath(getPath(piece, smooth: smooth), .zero);
+    }
+    return path;
   }
 
   /// Returns a [Path] that represents the stroke.
@@ -328,12 +472,21 @@ class Stroke {
           '${page.size.height - point.dy}';
     }
 
-    // Remove NaN points, and convert to SVG coordinates
-    final svgPoints = highQualityPolygon
-        .where((offset) => offset.isFinite)
-        .map(toSvgPoint);
+    String toSvgOutline(List<Offset> polygon) {
+      // Remove NaN points, and convert to SVG coordinates
+      final svgPoints = polygon
+          .where((offset) => offset.isFinite)
+          .map(toSvgPoint);
+      return svgPoints.isNotEmpty ? 'M${svgPoints.join('L')}' : '';
+    }
 
-    return svgPoints.isNotEmpty ? 'M${svgPoints.join('L')}' : '';
+    if (isInPieces) {
+      return highQualityPieces
+          .map(toSvgOutline)
+          .where((p) => p.isNotEmpty)
+          .join(' ');
+    }
+    return toSvgOutline(highQualityPolygon);
   }
 
   double get maxY {
@@ -433,6 +586,8 @@ class Stroke {
     pageIndex: pageIndex,
     page: page,
     toolId: toolId,
+    lineStyle: lineStyle,
+    lineStyleOffset: lineStyleOffset,
   )..points.addAll(points);
 }
 

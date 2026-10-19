@@ -302,6 +302,11 @@ editor:
     laserPointer: Laser pointer
   penOptions:
     size: Size
+    lineStyles:
+      solid: Solid line
+      dashed: Dashed line
+      dotted: Dotted line
+      dashDot: Dash-dot line
   eraserOptions:
     strokeEraser: Stroke eraser
     areaEraser: Area eraser

@@ -12,9 +12,11 @@ import 'package:saber/data/editor/page.dart';
 import 'package:saber/data/prefs.dart';
 import 'package:saber/data/tools/_tool.dart';
 import 'package:saber/data/tools/highlighter.dart';
+import 'package:saber/data/tools/line_style.dart';
 import 'package:saber/data/tools/pencil.dart';
 import 'package:saber/i18n/strings.g.dart';
 import 'package:sbn/tool_id.dart';
+import 'package:stow_plain/stow_plain.dart';
 
 class Pen extends Tool {
   @protected
@@ -29,6 +31,7 @@ class Pen extends Tool {
     required this.pressureEnabled,
     required this.color,
     required this.toolId,
+    this.lineStyleStow,
   });
 
   new fountainPen()
@@ -40,7 +43,8 @@ class Pen extends Tool {
       options = stows.lastFountainPenOptions.value,
       pressureEnabled = true,
       color = Color(stows.lastFountainPenColor.value),
-      toolId = .fountainPen;
+      toolId = .fountainPen,
+      lineStyleStow = stows.lastFountainPenLineStyle;
 
   new ballpointPen()
     : name = t.editor.pens.ballpointPen,
@@ -51,7 +55,8 @@ class Pen extends Tool {
       options = stows.lastBallpointPenOptions.value,
       pressureEnabled = false,
       color = Color(stows.lastBallpointPenColor.value),
-      toolId = .ballpointPen;
+      toolId = .ballpointPen,
+      lineStyleStow = stows.lastBallpointPenLineStyle;
 
   final String name;
   final double sizeMin, sizeMax, sizeStep;
@@ -69,6 +74,14 @@ class Pen extends Tool {
   Color color;
   bool pressureEnabled;
   StrokeOptions options;
+
+  /// Where this pen's [lineStyle] is saved,
+  /// or null if this pen only draws solid lines.
+  final PlainStow<String>? lineStyleStow;
+
+  /// How this pen's strokes are drawn along their length.
+  LineStyle get lineStyle => .fromJson(lineStyleStow?.value);
+  set lineStyle(LineStyle lineStyle) => lineStyleStow?.value = lineStyle.name;
 
   static var _currentPen = Pen.fountainPen();
   static Pen get currentPen => _currentPen;
@@ -148,6 +161,7 @@ class Pen extends Tool {
       pageIndex: pageIndex,
       page: page,
       toolId: toolId,
+      lineStyle: lineStyle,
     );
     onDragUpdate(position, pressure);
   }

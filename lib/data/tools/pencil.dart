@@ -16,6 +16,7 @@ class Pencil extends Pen {
         pressureEnabled: true,
         color: Color(stows.lastPencilColor.value),
         toolId: .pencil,
+        lineStyleStow: stows.lastPencilLineStyle,
       );
 
   static var currentPencil = Pencil();

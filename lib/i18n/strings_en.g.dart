@@ -1168,6 +1168,8 @@ class Translations$editor$penOptions$en {
 
 	/// en: 'Size'
 	String get size => 'Size';
+
+	late final Translations$editor$penOptions$lineStyles$en lineStyles = Translations$editor$penOptions$lineStyles$en.internal(_root);
 }
 
 // Path: editor.eraserOptions
@@ -1625,6 +1627,27 @@ class Translations$login$encLoginStep$encFaq$2$en {
 
 	/// en: 'Yes, but keep in mind that it would be easier for the server administrator or someone else to access your notes if they gain access to your Nextcloud account.'
 	String get a => 'Yes, but keep in mind that it would be easier for the server administrator or someone else to access your notes if they gain access to your Nextcloud account.';
+}
+
+// Path: editor.penOptions.lineStyles
+class Translations$editor$penOptions$lineStyles$en {
+	Translations$editor$penOptions$lineStyles$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Solid line'
+	String get solid => 'Solid line';
+
+	/// en: 'Dashed line'
+	String get dashed => 'Dashed line';
+
+	/// en: 'Dotted line'
+	String get dotted => 'Dotted line';
+
+	/// en: 'Dash-dot line'
+	String get dashDot => 'Dash-dot line';
 }
 
 // Path: editor.menu.boxFits

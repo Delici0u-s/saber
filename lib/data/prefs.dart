@@ -14,6 +14,7 @@ import 'package:saber/data/flavor_config.dart';
 import 'package:saber/data/quota.dart';
 import 'package:saber/data/sentry/sentry_consent.dart';
 import 'package:saber/data/tools/highlighter.dart';
+import 'package:saber/data/tools/line_style.dart';
 import 'package:saber/data/tools/pen.dart';
 import 'package:sbn/canvas_background_pattern.dart';
 import 'package:sbn/tool_id.dart';
@@ -318,6 +319,23 @@ class Stows {
         'lastShapePenProperties',
         Pen.shapePenOptions,
         fromJson: _strokeOptionsFromJson,
+        volatile: !_isOnMainIsolate,
+      );
+
+  /// [LineStyle.name] of the last style used with each pen.
+  final lastFountainPenLineStyle = PlainStow(
+        'lastFountainPenLineStyle',
+        LineStyle.solid.name,
+        volatile: !_isOnMainIsolate,
+      ),
+      lastBallpointPenLineStyle = PlainStow(
+        'lastBallpointPenLineStyle',
+        LineStyle.solid.name,
+        volatile: !_isOnMainIsolate,
+      ),
+      lastPencilLineStyle = PlainStow(
+        'lastPencilLineStyle',
+        LineStyle.solid.name,
         volatile: !_isOnMainIsolate,
       );
   final lastFountainPenColor = PlainStow(

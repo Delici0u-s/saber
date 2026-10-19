@@ -96,13 +96,85 @@ void main() {
     final erased = eraser.checkForOverlappingStrokes(_eraserPos, pageStrokes);
 
     expect(erased, isEmpty);
-    expect(stroke1.pointVectors.length, lessThan(2));
-    expect(stroke2.pointVectors.length, lessThan(2));
-    expect(pageStrokes.length, greaterThan(2));
+    // Each line is cut where it crosses the eraser, into two parts.
+    expect(stroke1.pointVectors, hasLength(2));
+    expect(stroke2.pointVectors, hasLength(2));
+    expect(pageStrokes.length, 4);
 
     final result = eraser.onDragEnd();
     expect(result.replacementStrokes, isNotEmpty);
     expect(result.replacementStrokes.length, greaterThanOrEqualTo(2));
+  });
+
+  group('Area eraser cutting', () {
+    // The eraser has radius 10 around (50, 50).
+    test('cuts a straight line where it crosses the eraser', () {
+      final eraser = Eraser(size: 10, areaEraser: true);
+      final line = _strokeWithLine(const Offset(0, 50), const Offset(100, 50));
+      final pageStrokes = [line];
+
+      eraser.checkForOverlappingStrokes(_eraserPos, pageStrokes);
+
+      final xs = [
+        for (final stroke in pageStrokes)
+          [for (final point in stroke.pointVectors) point.x],
+      ];
+      expect(xs, hasLength(2));
+      expect(xs[0][0], 0);
+      expect(xs[0][1], closeTo(40, 1e-9));
+      expect(xs[1][0], closeTo(60, 1e-9));
+      expect(xs[1][1], 100);
+    });
+
+    test('leaves a line that misses the eraser alone', () {
+      final eraser = Eraser(size: 10, areaEraser: true);
+      final line = _strokeWithLine(const Offset(0, 70), const Offset(100, 70));
+      final pageStrokes = [line];
+
+      final erased = eraser.checkForOverlappingStrokes(_eraserPos, pageStrokes);
+
+      expect(erased, isEmpty);
+      expect(pageStrokes, [line]);
+      expect(line.pointVectors, hasLength(2));
+    });
+
+    test('erases a line that is fully inside', () {
+      final eraser = Eraser(size: 10, areaEraser: true);
+      final line = _strokeWithLine(const Offset(45, 50), const Offset(55, 50));
+
+      final erased = eraser.checkForOverlappingStrokes(_eraserPos, [line]);
+
+      expect(erased, [line]);
+    });
+
+    test('dashes after the cut stay where they were', () {
+      final eraser = Eraser(size: 10, areaEraser: true);
+      final line = Stroke(
+        color: Stroke.defaultColor,
+        pressureEnabled: false,
+        options: StrokeOptions(size: 2, isComplete: true),
+        pageIndex: 0,
+        page: const HasSize(Size(100, 100)),
+        toolId: .ballpointPen,
+        lineStyle: .dashed,
+      )..addPoints([const Offset(0, 50), const Offset(100, 50)]);
+      List<double> dashStarts(Stroke stroke) => [
+        for (final piece in stroke.highQualityPieces)
+          piece.map((p) => p.dx).reduce(min),
+      ];
+      final before = dashStarts(line);
+      final pageStrokes = [line];
+
+      eraser.checkForOverlappingStrokes(_eraserPos, pageStrokes);
+
+      expect(pageStrokes, hasLength(2));
+      expect(pageStrokes[1].lineStyleOffset, closeTo(60, 1e-9));
+      // Every dash right of the eraser is one that was there before.
+      for (final start in dashStarts(pageStrokes[1])) {
+        if (start < 61) continue; // the dash cut by the eraser's edge
+        expect(before, contains(closeTo(start, 1e-6)));
+      }
+    });
   });
 }
 
