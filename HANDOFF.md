@@ -90,10 +90,9 @@ mm, both) still needs deciding.
   (`scripts/dev.sh linux install`) and check a reload of a note with images doesn't blink.
 - **Line styles and area eraser on the tablet** (`6005f64a`): draw dashed lines with the pen
   (real pressure, unlike the laptop's mouse) and erase across them.
-- **Strokes with corners when zoomed out:** below 0.9x zoom Saber draws strokes from every 4th point
-  without smoothing (`_zoomThreshold` in `_canvas_painter.dart`, upstream behaviour). Seen on the
-  laptop at about 0.7x. Lowering that cutoff (e.g. a separate 0.5 for stroke detail) would fix it at
-  some speed cost; check how it looks on the tablet first.
+- **Smooth strokes zoomed out** (`3e39cc4`): strokes now use full detail down to 0.5x zoom
+  (`_lowQualityZoomThreshold` in `_canvas_painter.dart`; upstream switched at 0.9x). Check that
+  scrolling a page full of handwriting between 0.5x and 0.9x stays fast on the tablet.
 - **Tablet:** still on an older build. `scripts/dev.sh android install` brings the *Real size paper*
   setting and the flicker fix.
 
