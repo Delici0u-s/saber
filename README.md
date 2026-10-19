@@ -35,7 +35,8 @@
 >   and shape recognition (0.25s).
 > - **Build script:** `scripts/dev.sh android|linux [build|install|run] [--debug]`. Machine-specific
 >   paths go in `scripts/dev.local.env` (see the script's header). Android installs keep app data and
->   refuse to replace a differently signed (e.g. Play Store) install.
+>   refuse to replace a differently signed (e.g. Play Store) install. `linux install`/`uninstall` add or remove it
+>   next to the official Saber (see *Installing this fork* below).
 >
 > **Merged upstream pull requests**
 > - [#1829](https://github.com/saber-notes/saber/pull/1829): move selections between pages
@@ -47,6 +48,20 @@
 > **AI assistance:** the investigation, fixes and features in this fork were made with help from
 > Claude (Anthropic). Code in this fork is for personal use and isn't submitted to Saber, whose
 > contributing guidelines don't accept AI-generated code.
+>
+> **Installing this fork**
+> - **Dependencies:** Flutter and the system packages are the same as upstream's; see
+>   [Build Saber](https://github.com/saber-notes/saber/wiki/build) on the original repo's wiki.
+>   `pubspec.yaml` names the minimum Flutter version.
+> - **Get the code:** `git clone https://github.com/Delici0u-s/saber && cd saber`. If `flutter` isn't on
+>   your `PATH`, put `FLUTTER_ROOT=/path/to/flutter` in `scripts/dev.local.env`.
+> - **Linux:** `scripts/dev.sh linux install` builds a release and installs *Saber (personalized)* for
+>   your user, next to any other Saber: app menu entry, `saber-personalized` command, its own settings
+>   and its own notes folder `~/Documents/Saber (personalized)`. Rerun it to update;
+>   `scripts/dev.sh linux uninstall` removes the app but keeps the notes and settings.
+> - **Android:** `scripts/dev.sh android` builds, installs and launches on the connected device.
+>   It replaces the official Saber (same app id) and refuses if that one is signed differently,
+>   because replacing it would delete its notes.
 
 # <img src="https://github.com/saber-notes/saber/raw/main/assets/icon/icon.png" width="30" height="30" alt="Logo"> Saber
 

@@ -82,6 +82,13 @@ Keep the override on `ref: personal` until then (not `fix/stationary-dots`): you
   CMake caches `/usr/local` as the install prefix and the next build fails with "Permission
   denied" copying to `/usr/local/saber`: `rm build/linux/x64/release/CMakeCache.txt` and rebuild
   (never use `sudo`). The "install" is only Flutter copying the app into `build/…/bundle`.
+- **Personalized Linux install** (`scripts/dev.sh linux install`): app id
+  `com.adilhanney.saber.personalized` (set via `SABER_APPLICATION_ID` in `linux/CMakeLists.txt`),
+  files in `~/.local/lib/<id>`, launcher `~/.local/bin/saber-personalized`, desktop entry and icon
+  under `~/.local/share`. Notes go to `~/Documents/Saber (personalized)` (dart-define
+  `LOCAL_DIRECTORY_NAME`), settings to `~/.local/share/<id>`; the Flathub Saber keeps
+  `~/Documents/Saber`. Both sync to the same Nextcloud `Saber` folder if you log in to both.
+  Update check is off. `LINUX_INSTALL_LABEL` in `dev.local.env` renames all of it.
 - The release app on the tablet isn't debuggable, so `run-as` (note decoding below) needs a
   `--debug` build.
 
@@ -134,7 +141,8 @@ cd .. && gh repo clone Delici0u-s/perfect-freehand-dart   # only needed to work 
 | Build + install + launch on tablet (release, keeps data) | `scripts/dev.sh android` |
 | Only build / only install | `scripts/dev.sh android build` / `install` |
 | Debug build (slow; for logs) | `scripts/dev.sh android --debug` |
-| Linux desktop | `scripts/dev.sh linux` |
+| Linux desktop (dev build from `build/`) | `scripts/dev.sh linux` |
+| Install / update "Saber (personalized)" for daily use (next to the Flathub Saber) | `scripts/dev.sh linux install` (`uninstall` removes it, keeps notes) |
 | Tests | `flutter test` (14 golden tests also fail on unmodified `main` outside Docker; `./test.sh` runs them in Docker) |
 | Analyzer | `flutter analyze` (16 info-level lints are expected) |
 | After editing `lib/i18n/en.i18n.yaml` | `dart run slang` |

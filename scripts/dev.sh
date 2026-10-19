@@ -2,13 +2,17 @@
 # Build, install and run Saber locally for Android or Linux.
 #
 #   scripts/dev.sh android [build|install|run] [--debug]   (default: run)
-#   scripts/dev.sh linux   [build|run]         [--debug]   (default: run)
+#   scripts/dev.sh linux   [build|install|uninstall|run] [--debug]   (default: run)
 #
 # Release builds by default (debug builds are much slower on device).
+# 'linux install' installs a "Saber (personalized)" for the current user, alongside any other
+# Saber: own app id, settings and notes folder (~/Documents/Saber (personalized)), no update
+# check. 'linux uninstall' removes it again but keeps its notes and settings.
 # Machine-specific settings go in scripts/dev.local.env (gitignored), e.g.:
 #   FLUTTER_ROOT=$HOME/Documents/Sources/flutter
 #   JAVA_HOME=$HOME/.gradle/jdks/<some-jdk>
 #   ANDROID_SERIAL=<adb device id>   # only needed with several devices
+#   LINUX_INSTALL_LABEL=personalized # names the linux install (app id, menu entry, notes folder)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -20,7 +24,7 @@ die() { echo "error: $*" >&2; exit 1; }
 info() { echo "==> $*"; }
 
 usage() {
-  sed -n '2,11p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  sed -n '2,15p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
   exit "${1:-0}"
 }
 
@@ -33,7 +37,7 @@ for arg in "$@"; do
   case "$arg" in
     --debug) MODE="debug" ;;
     -h|--help) usage ;;
-    build|install|run) ACTION="$arg" ;;
+    build|install|uninstall|run) ACTION="$arg" ;;
     *) die "unknown argument: $arg" ;;
   esac
 done
@@ -93,6 +97,7 @@ android_target_platform() { # <adb serial>
 }
 
 android() {
+  [[ "$ACTION" != "uninstall" ]] || die "'uninstall' isn't supported for android"
   pick_java_home
   check_path_dependencies
   local serial platform package apk
@@ -130,23 +135,21 @@ android() {
 }
 
 # --- linux -----------------------------------------------------------------------
-linux() {
-  [[ "$ACTION" != "install" ]] || die "'install' isn't supported for linux; use build or run"
-  check_path_dependencies
-  local binary arch bundle
-  binary="$(project_value linux/CMakeLists.txt '^set\(BINARY_NAME "([^"]+)"\).*')"
-  [[ -n "$binary" ]] || die "couldn't read BINARY_NAME from linux/CMakeLists.txt"
+linux_bundle() { # prints the bundle dir that `flutter build linux` fills
+  local arch
   case "$(uname -m)" in
     x86_64) arch=x64 ;;
     aarch64) arch=arm64 ;;
     *) die "unsupported architecture: $(uname -m)" ;;
   esac
-  bundle="$ROOT/build/linux/$arch/$MODE/bundle"
+  echo "$ROOT/build/linux/$arch/$MODE/bundle"
+}
 
+linux_build() { # [extra flutter args...]
   info "Building $MODE Linux app"
   local log
   log="$(mktemp)"
-  if ! (cd "$ROOT" && flutter build linux "--$MODE") 2>&1 | tee "$log"; then
+  if ! (cd "$ROOT" && flutter build linux "--$MODE" "$@") 2>&1 | tee "$log"; then
     if grep -q 'required packages were not found' "$log"; then
       echo >&2
       echo "Missing system libraries (pkg-config names):" >&2
@@ -158,11 +161,110 @@ linux() {
     die "linux build failed"
   fi
   rm -f "$log"
-  if [[ "$ACTION" == "run" ]]; then
-    info "Running $bundle/$binary"
-    exec "$bundle/$binary"
+}
+
+# The separately installed app: everything is derived from the project and LINUX_INSTALL_LABEL.
+linux_install_paths() {
+  local label="${LINUX_INSTALL_LABEL:-personalized}"
+  [[ "$label" =~ ^[A-Za-z0-9_]+$ ]] || die "LINUX_INSTALL_LABEL may only use letters, digits and _ (it's part of the app id)"
+  local base_id data_home
+  base_id="$(project_value linux/CMakeLists.txt '^set\(APPLICATION_ID "([^"]+)"\).*')"
+  [[ -n "$base_id" ]] || die "couldn't read APPLICATION_ID from linux/CMakeLists.txt"
+  data_home="${XDG_DATA_HOME:-$HOME/.local/share}"
+
+  INSTALL_LABEL="$label"
+  INSTALL_ID="$base_id.$label"
+  DESKTOP_TEMPLATE="$ROOT/flatpak/$base_id.desktop"
+  INSTALL_DIR="$HOME/.local/lib/$INSTALL_ID"
+  INSTALL_MARKER="$INSTALL_DIR/.installed-by-dev.sh"
+  INSTALL_LAUNCHER="$HOME/.local/bin/$BINARY-$label"
+  INSTALL_DESKTOP="$data_home/applications/$INSTALL_ID.desktop"
+  INSTALL_ICON_SOURCE="$ROOT/$(project_value snap/snapcraft.yaml '^icon:\s*(\S+).*')"
+  INSTALL_ICON="$data_home/icons/hicolor/scalable/apps/$INSTALL_ID.${INSTALL_ICON_SOURCE##*.}"
+  INSTALL_SETTINGS_DIR="$data_home/$INSTALL_ID"
+  local folder
+  folder="$(project_value lib/data/file_manager/file_manager.dart "^\s*static const appRootDirectoryPrefix = '([^']+)'.*")"
+  [[ -n "$folder" ]] || die "couldn't read appRootDirectoryPrefix from lib/data/file_manager/file_manager.dart"
+  INSTALL_NOTES_FOLDER="$folder ($label)"
+}
+
+# Refuse to touch an install dir or launcher this script didn't create.
+check_owned_install() {
+  if [[ -e "$INSTALL_DIR" && ! -f "$INSTALL_MARKER" ]]; then
+    die "$INSTALL_DIR exists but wasn't installed by this script; move it away first"
   fi
-  info "Built $bundle/$binary"
+  if [[ -e "$INSTALL_LAUNCHER" || -L "$INSTALL_LAUNCHER" ]] \
+    && [[ "$(readlink "$INSTALL_LAUNCHER")" != "$INSTALL_DIR/$BINARY" ]]; then
+    die "$INSTALL_LAUNCHER exists and isn't this script's launcher; move it away first"
+  fi
+}
+
+refresh_desktop_caches() {
+  command -v update-desktop-database >/dev/null && update-desktop-database -q "$(dirname "$INSTALL_DESKTOP")" || true
+  command -v gtk-update-icon-cache >/dev/null && gtk-update-icon-cache -q -t "${INSTALL_ICON%/scalable/*}" || true
+}
+
+linux_install() {
+  linux_install_paths
+  [[ -f "$DESKTOP_TEMPLATE" ]] || die "desktop file template $DESKTOP_TEMPLATE is missing"
+  [[ -f "$INSTALL_ICON_SOURCE" ]] || die "icon $INSTALL_ICON_SOURCE (from snap/snapcraft.yaml) is missing"
+  check_owned_install
+
+  SABER_APPLICATION_ID="$INSTALL_ID" linux_build \
+    --dart-define=LOCAL_DIRECTORY_NAME="$INSTALL_NOTES_FOLDER" \
+    --dart-define=UPDATE_CHECK=false
+
+  info "Installing to $INSTALL_DIR (notes and settings live elsewhere and are kept)"
+  local staging="$INSTALL_DIR.new"
+  rm -rf "$staging"
+  mkdir -p "$(dirname "$INSTALL_DIR")"
+  cp -a "$(linux_bundle)" "$staging"
+  touch "$staging/.installed-by-dev.sh"
+  rm -rf "$INSTALL_DIR"
+  mv "$staging" "$INSTALL_DIR"
+
+  mkdir -p "$(dirname "$INSTALL_LAUNCHER")" "$(dirname "$INSTALL_DESKTOP")" "$(dirname "$INSTALL_ICON")"
+  ln -sfn "$INSTALL_DIR/$BINARY" "$INSTALL_LAUNCHER"
+  cp "$INSTALL_ICON_SOURCE" "$INSTALL_ICON"
+  sed -E \
+    -e "s/^(Name(\[[^]]*\])?=.*)$/\1 ($INSTALL_LABEL)/" \
+    -e "s|^Icon=.*|Icon=$INSTALL_ID|" \
+    -e "s|^Exec=[^ ]*|Exec=\"$INSTALL_DIR/$BINARY\"|" \
+    -e "s|^StartupWMClass=.*|StartupWMClass=$INSTALL_ID|" \
+    "$DESKTOP_TEMPLATE" >"$INSTALL_DESKTOP"
+  refresh_desktop_caches
+
+  info "Installed $(sed -nE 's/^Name=//p' "$INSTALL_DESKTOP" | head -n1): app menu, or '$(basename "$INSTALL_LAUNCHER")'"
+  info "Notes: Documents/$INSTALL_NOTES_FOLDER, settings: $INSTALL_SETTINGS_DIR"
+}
+
+linux_uninstall() {
+  linux_install_paths
+  check_owned_install
+  info "Removing the app (keeps notes in Documents/$INSTALL_NOTES_FOLDER and settings in $INSTALL_SETTINGS_DIR)"
+  rm -rf "$INSTALL_DIR"
+  rm -f "$INSTALL_LAUNCHER" "$INSTALL_DESKTOP" "$INSTALL_ICON"
+  refresh_desktop_caches
+}
+
+linux() {
+  check_path_dependencies
+  BINARY="$(project_value linux/CMakeLists.txt '^set\(BINARY_NAME "([^"]+)"\).*')"
+  [[ -n "$BINARY" ]] || die "couldn't read BINARY_NAME from linux/CMakeLists.txt"
+
+  case "$ACTION" in
+    install) linux_install; return ;;
+    uninstall) linux_uninstall; return ;;
+  esac
+
+  linux_build
+  local bundle
+  bundle="$(linux_bundle)"
+  if [[ "$ACTION" == "run" ]]; then
+    info "Running $bundle/$BINARY"
+    exec "$bundle/$BINARY"
+  fi
+  info "Built $bundle/$BINARY"
 }
 
 case "$TARGET" in

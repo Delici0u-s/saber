@@ -30,6 +30,14 @@ class FileManager {
 
   static const appRootDirectoryPrefix = 'Saber';
 
+  /// The default local folder's name in the documents directory.
+  /// A build installed alongside another Saber sets its own
+  /// (see `scripts/dev.sh linux install`); the Nextcloud folder stays the same.
+  static const localDirectoryName = String.fromEnvironment(
+    'LOCAL_DIRECTORY_NAME',
+    defaultValue: appRootDirectoryPrefix,
+  );
+
   /// This isn't final because isolates sometimes init multiple times.
   /// Realistically, this value never changes.
   static late String documentsDirectory;
@@ -81,7 +89,7 @@ class FileManager {
       stows.customDataDir.value ?? await getDefaultDocumentsDirectory();
 
   static Future<String> getDefaultDocumentsDirectory() async =>
-      '${(await getApplicationDocumentsDirectory()).path}/$appRootDirectoryPrefix';
+      '${(await getApplicationDocumentsDirectory()).path}/$localDirectoryName';
 
   static Future<void> migrateDataDir() async {
     final oldDir = Directory(documentsDirectory);
