@@ -318,8 +318,13 @@ class CanvasPainter extends CustomPainter {
       currentScale >= _zoomThreshold && (strokeSize * currentScale) >= 3;
 
   static const _zoomThreshold = 0.9;
+
+  /// Below this zoom, strokes are drawn in less detail (see
+  /// [StrokeQuality.low]) to stay fast with many strokes on screen. Lower
+  /// than [_zoomThreshold]: around 0.7x their corners still show.
+  static const _lowQualityZoomThreshold = 0.5;
   Path _selectPath(Stroke stroke) => switch (currentScale) {
-    < _zoomThreshold => stroke.lowQualityPath,
+    < _lowQualityZoomThreshold => stroke.lowQualityPath,
     _ => stroke.highQualityPath,
   };
 }
