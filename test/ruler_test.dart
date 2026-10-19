@@ -25,12 +25,18 @@ void main() {
 
   for (final shape in RulerShape.values) {
     for (final overlay in overlays) {
-      for (final snapDistance in [8.0, 16.0, 32.0]) {
-        group('$shape in $overlay, snapping at $snapDistance', () {
+      for (final (snapDistance, pixelsPerMm) in [
+        (8.0, 3.78),
+        (16.0, 6.0),
+        (32.0, 12.0),
+      ]) {
+        group('$shape in $overlay, snapping at $snapDistance, '
+            '$pixelsPerMm px/mm', () {
           final outline = RulerOutline.of(shape, (
             snapDistance: snapDistance,
             ringInner: ringInner,
             ringOuter: ringOuter,
+            pixelsPerMm: pixelsPerMm,
             overlay: overlay,
           ));
 
@@ -43,18 +49,60 @@ void main() {
             }
           });
 
-          test('the ring is inside, with room to snap around it', () {
-            if (shape == .ruler) {
-              // The ruler is only as wide as its grab area and snap bands.
-              expect(outline.path.contains(.zero), isTrue);
-              return;
-            }
+          test('the ring is inside', () {
+            expect(outline.path.contains(.zero), isTrue);
+            if (shape == .ruler) return; // as wide as its grab area and bands
             for (final side in outline.sides) {
+              expect(side.distanceTo(.zero), greaterThanOrEqualTo(ringOuter));
+            }
+          });
+
+          if (shape != .ruler) {
+            test('is real size', () {
+              final xs = outline.corners.map((corner) => corner.dx);
+              final widthMm = (xs.reduce(max) - xs.reduce(min)) / pixelsPerMm;
+              expect(widthMm, closeTo(shape == .trySquare ? 150 : 160, 1e-9));
+            });
+          }
+
+          test('a pen keeps against a side until it pulls away', () {
+            final side = outline.sides.first;
+            final middle = (side.start + side.end) / 2;
+            final along =
+                (side.end - side.start) / (side.end - side.start).distance;
+            final beside = middle + along * (ringOuter + snapDistance);
+            // Reaching the side mid-stroke snaps to it.
+            expect(
+              outline.edgeFor(
+                beside + side.outward * (snapDistance * 3),
+                snapDistance,
+              ),
+              isNull,
+            );
+            expect(
+              outline.edgeFor(
+                beside + side.outward * (snapDistance / 2),
+                snapDistance,
+              ),
+              side,
+            );
+            // Pushing into the ruler stays on it.
+            final inside = beside - side.outward * (snapDistance * 2);
+            if (outline.path.contains(inside)) {
               expect(
-                side.distanceTo(.zero),
-                greaterThanOrEqualTo(ringOuter + snapDistance - 1e-9),
+                outline.edgeFor(inside, snapDistance, current: side),
+                side,
               );
             }
+            // Pulling away lets go.
+            expect(
+              outline.edgeFor(
+                beside + side.outward * (snapDistance + 1),
+                snapDistance,
+                current: side,
+              ),
+              isNull,
+            );
           });
 
           test('strokes snap to each side from either side of it', () {
@@ -121,6 +169,22 @@ void main() {
     test('stops at its ends', () {
       expect(edge.project(const Offset(500, 400)), const Offset(100, 100));
       expect(edge.project(const Offset(-50, -80)), Offset.zero);
+    });
+  });
+
+  group('RulerUnit', () {
+    test('labels every largest group of marks', () {
+      expect(RulerUnit.mm.markMm, 1);
+      expect(RulerUnit.mm.label(30), '3');
+      expect(RulerUnit.inch.markMm * 16, closeTo(25.4, 1e-9));
+      expect(RulerUnit.inch.label(-32), '2');
+      expect(RulerUnit.points.markMm * 72, closeTo(25.4, 1e-9));
+      expect(RulerUnit.points.label(24), '2');
+      stows.rulerMarkSpacingMm.value = 2.5;
+      expect(RulerUnit.custom.markMm, 2.5);
+      expect(RulerUnit.custom.label(10), '2.5');
+      expect(RulerUnit.custom.label(40), '10');
+      stows.rulerMarkSpacingMm.value = 1;
     });
   });
 
@@ -225,6 +289,7 @@ void main() {
       stows.lastRulerShape.value = RulerShape.ruler.name;
       stows.rulerMarkSpacingMm.value = 1;
       stows.rulerSnapDistance.value = 16;
+      stows.rulerUnit.value = RulerUnit.mm.name;
       ruler = Ruler()..visible = true;
       canvasDowns = [];
       pixelsPerMm = 4;
@@ -264,7 +329,7 @@ void main() {
       final edge = ruler.centerIn(size) + Offset(200, barHalf() - 2);
       await tester.tapAt(edge);
       expect(canvasDowns, hasLength(1));
-      final projected = ruler.edgeNear(edge)!.project(edge, gap: 3);
+      final projected = ruler.snapFor(edge)!.project(edge, gap: 3);
       expect(
         (projected - (ruler.centerIn(size) + Offset(200, barHalf() + 3)))
             .distance,
@@ -281,7 +346,7 @@ void main() {
         (longSide.start + longSide.end) / 2 + const Offset(40, -5),
         size,
       );
-      final snap = ruler.edgeNear(start)!;
+      final snap = ruler.snapFor(start)!;
       expect(snap.edge, longSide);
       for (final point in [start, start + const Offset(60, 10)]) {
         final local = ruler.toRuler(snap.project(point, gap: 2), size);
@@ -305,16 +370,40 @@ void main() {
       await tester.pump();
       await tester.tapAt(ruler.centerIn(size));
       expect(canvasDowns, hasLength(1));
-      expect(ruler.edgeNear(ruler.centerIn(size)), isNull);
+      expect(ruler.snapFor(ruler.centerIn(size)), isNull);
+    });
+
+    testWidgets('a stroke snaps when it reaches a side', (tester) async {
+      await pumpOverlay(tester);
+      final center = ruler.centerIn(size);
+      final away = center + Offset(200, barHalf() + 100);
+      expect(ruler.snapFor(away), isNull);
+      final near = center + Offset(220, barHalf() + 5);
+      final snap = ruler.snapFor(near)!;
+      expect(
+        ruler.snapFor(center + Offset(240, barHalf() - 10), current: snap),
+        same(snap),
+      );
+      expect(
+        ruler.snapFor(center + Offset(260, barHalf() + 100), current: snap),
+        isNull,
+      );
     });
 
     for (final shape in RulerShape.values) {
       for (final overlay in const [Size(120, 900), Size(3000, 200)]) {
-        for (final (zoom, spacing) in [(0.05, 1.0), (4.0, 7.0), (400.0, 0.3)]) {
+        for (final (zoom, unit, spacing) in [
+          (0.05, RulerUnit.mm, 1.0),
+          (1.1, RulerUnit.points, 1.0),
+          (4.0, RulerUnit.custom, 7.0),
+          (40.0, RulerUnit.inch, 1.0),
+          (400.0, RulerUnit.custom, 0.3),
+        ]) {
           testWidgets(
-            'draws $shape at $overlay, $zoom px/mm, marks every $spacing mm',
+            'draws $shape at $overlay, $zoom px/mm, $unit ($spacing mm)',
             (tester) async {
               stows.lastRulerShape.value = shape.name;
+              stows.rulerUnit.value = unit.name;
               stows.rulerMarkSpacingMm.value = spacing;
               pixelsPerMm = zoom;
               ruler.rotateTo(0.4);

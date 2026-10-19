@@ -24,6 +24,7 @@ void main() {
   setUp(() {
     stows.lastRulerShape.value = RulerShape.ruler.name;
     stows.rulerMarkSpacingMm.value = 1;
+    stows.rulerUnit.value = RulerUnit.mm.name;
     ruler = Ruler()..visible = true;
     hidden = false;
   });
@@ -43,7 +44,24 @@ void main() {
     }
   });
 
+  testWidgets('picks a unit, custom with its own spacing', (tester) async {
+    await pumpModal(tester);
+    expect(find.byType(TextField), findsNothing);
+    for (final (label, unit) in [
+      (t.editor.rulerOptions.units.inch, RulerUnit.inch),
+      (t.editor.rulerOptions.units.custom, RulerUnit.custom),
+    ]) {
+      await tester.tap(find.byType(DropdownButton<RulerUnit>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(label).last);
+      await tester.pumpAndSettle();
+      expect(ruler.unit, unit);
+    }
+    expect(find.byType(TextField), findsOneWidget);
+  });
+
   testWidgets('sets the mark spacing, ignoring invalid input', (tester) async {
+    ruler.unit = .custom;
     await pumpModal(tester);
     final field = find.byType(TextField);
     expect(find.text('1'), findsOneWidget);

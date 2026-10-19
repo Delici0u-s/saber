@@ -308,6 +308,12 @@ editor:
       ruler: Ruler
       trySquare: Try square
       setSquare: Set square with protractor
+    unit: Unit
+    units:
+      mm: mm / cm
+      inch: inch
+      points: pt / pica
+      custom: Custom
     markSpacing: Mark spacing
     mm: mm
     hide: Hide the ruler

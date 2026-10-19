@@ -1177,6 +1177,11 @@ class Translations$editor$rulerOptions$en {
 	// Translations
 	late final Translations$editor$rulerOptions$shapes$en shapes = Translations$editor$rulerOptions$shapes$en.internal(_root);
 
+	/// en: 'Unit'
+	String get unit => 'Unit';
+
+	late final Translations$editor$rulerOptions$units$en units = Translations$editor$rulerOptions$units$en.internal(_root);
+
 	/// en: 'Mark spacing'
 	String get markSpacing => 'Mark spacing';
 
@@ -1674,6 +1679,27 @@ class Translations$editor$rulerOptions$shapes$en {
 
 	/// en: 'Set square with protractor'
 	String get setSquare => 'Set square with protractor';
+}
+
+// Path: editor.rulerOptions.units
+class Translations$editor$rulerOptions$units$en {
+	Translations$editor$rulerOptions$units$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'mm / cm'
+	String get mm => 'mm / cm';
+
+	/// en: 'inch'
+	String get inch => 'inch';
+
+	/// en: 'pt / pica'
+	String get points => 'pt / pica';
+
+	/// en: 'Custom'
+	String get custom => 'Custom';
 }
 
 // Path: editor.penOptions.lineStyles

@@ -112,7 +112,8 @@ class EditorState extends State<Editor> {
   /// A straight edge to draw along, toggled in the toolbar.
   final ruler = Ruler();
 
-  /// The ruler side the current stroke is drawn along, if it started there.
+  /// The ruler side the current stroke is drawn along, while the pen is
+  /// against it (see [Ruler.snapFor]).
   RulerSnap? _rulerSnap;
 
   double get scrollY {
@@ -638,8 +639,8 @@ class EditorState extends State<Editor> {
     page.redrawStrokes();
   }
 
-  /// [globalPosition] moved onto [_rulerSnap], if the current stroke
-  /// started there, so that the stroke runs along the ruler and touches it.
+  /// [globalPosition] moved onto [_rulerSnap], if the pen is against the
+  /// ruler, so that the stroke runs along it and touches it.
   Offset _alongRuler(Offset globalPosition, EditorPage page) {
     final snap = _rulerSnap;
     if (snap == null) return globalPosition;
@@ -654,7 +655,7 @@ class EditorState extends State<Editor> {
 
   void onDrawStart(ScaleStartDetails details) {
     final page = coreInfo.pages[dragPageIndex!];
-    _rulerSnap = currentTool is Pen ? ruler.edgeNear(details.focalPoint) : null;
+    _rulerSnap = currentTool is Pen ? ruler.snapFor(details.focalPoint) : null;
     final position = page.renderBox!.globalToLocal(
       _alongRuler(details.focalPoint, page),
     );
@@ -709,6 +710,9 @@ class EditorState extends State<Editor> {
       return;
     }
     final page = coreInfo.pages[dragPageIndex!];
+    if (currentTool is Pen) {
+      _rulerSnap = ruler.snapFor(details.focalPoint, current: _rulerSnap);
+    }
     Offset position = page.renderBox!.globalToLocal(
       _alongRuler(details.focalPoint, page),
     );

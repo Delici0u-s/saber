@@ -298,7 +298,15 @@ class Stows {
     volatile: !_isOnMainIsolate,
   );
 
-  /// Millimetres (on the page) between a ruler's marks.
+  /// The [RulerUnit] of a ruler's marks, by name.
+  final rulerUnit = PlainStow(
+    'rulerUnit',
+    RulerUnit.mm.name,
+    volatile: !_isOnMainIsolate,
+  );
+
+  /// Millimetres (on the page) between a ruler's marks in
+  /// [RulerUnit.custom].
   final rulerMarkSpacingMm = PlainStow(
     'rulerMarkSpacingMm',
     1.0,

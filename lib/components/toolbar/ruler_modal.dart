@@ -7,7 +7,7 @@ import 'package:saber/data/extensions/axis_extensions.dart';
 import 'package:saber/data/prefs.dart';
 import 'package:saber/i18n/strings.g.dart';
 
-/// Lets the user pick the [Ruler]'s shape and mark spacing, or hide it.
+/// Lets the user pick the [Ruler]'s shape and unit, or hide it.
 class RulerModal extends StatelessWidget {
   const new({super.key, required this.ruler, required this.hide});
 
@@ -20,6 +20,7 @@ class RulerModal extends StatelessWidget {
   Widget build(BuildContext context) {
     final axis = stows.editorToolbarAlignment.value.axis.opposite;
     final shapes = t.editor.rulerOptions.shapes;
+    final units = t.editor.rulerOptions.units;
 
     return ListenableBuilder(
       listenable: ruler,
@@ -45,7 +46,28 @@ class RulerModal extends StatelessWidget {
                   .setSquare => const Icon(Symbols.square_foot),
                 },
               ),
-            const _MarkSpacingField(),
+            Tooltip(
+              message: t.editor.rulerOptions.unit,
+              child: DropdownButton<RulerUnit>(
+                value: ruler.unit,
+                onChanged: (unit) {
+                  if (unit != null) ruler.unit = unit;
+                },
+                items: [
+                  for (final unit in RulerUnit.values)
+                    DropdownMenuItem(
+                      value: unit,
+                      child: Text(switch (unit) {
+                        .mm => units.mm,
+                        .inch => units.inch,
+                        .points => units.points,
+                        .custom => units.custom,
+                      }),
+                    ),
+                ],
+              ),
+            ),
+            if (ruler.unit == .custom) const _MarkSpacingField(),
             IconButton(
               tooltip: t.editor.rulerOptions.hide,
               onPressed: hide,
