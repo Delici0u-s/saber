@@ -62,18 +62,20 @@ project_value() { # <file> <regex with one capture group>
 }
 
 # --- android ---------------------------------------------------------------------
-# Flutter puts $JAVA_HOME/bin first on the build's PATH. With the system JDK (in /usr),
-# that means /usr/bin comes first and a distro rustc shadows rustup's, which breaks the
-# Rust-based native assets. So prefer a JDK that isn't under /usr.
+# Flutter puts $JAVA_HOME/bin first on the build's PATH. If that is /usr/bin (JAVA_HOME=/usr),
+# a distro rustc there shadows rustup's, which breaks the Rust-based native assets. So only
+# accept a JDK whose bin has no rustc, e.g. /usr/lib/jvm/java-21-openjdk or a Gradle one.
 pick_java_home() {
-  if [[ -n "${JAVA_HOME:-}" && "$JAVA_HOME" != /usr* ]]; then return; fi
+  # Exported: a JAVA_HOME from dev.local.env is only a shell variable, and without it Flutter
+  # falls back to the java on PATH (/usr/bin/java), putting /usr/bin first.
+  if [[ -n "${JAVA_HOME:-}" && ! -e "$JAVA_HOME/bin/rustc" ]]; then export JAVA_HOME; return; fi
   local jdk=""
   # Guarded: with pipefail, a missing directory would exit the script without a message.
   if [[ -d "$HOME/.gradle/jdks" ]]; then
     jdk="$(find "$HOME/.gradle/jdks" -mindepth 3 -maxdepth 3 -path '*/bin/java' -printf '%h\n' 2>/dev/null \
       | xargs -r -n1 dirname | sort -V | tail -n1)"
   fi
-  [[ -n "$jdk" ]] || die "no JDK outside /usr found; set JAVA_HOME in $LOCAL_ENV"
+  [[ -n "$jdk" ]] || die "no JDK without a rustc next to java found; set JAVA_HOME in $LOCAL_ENV"
   export JAVA_HOME="$jdk"
 }
 
