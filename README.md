@@ -35,6 +35,10 @@
 >   to turn it into a line, rectangle, circle, triangle or star. ([`8c142f2`](https://github.com/Delici0u-s/saber/commit/8c142f25))
 > - **Line styles:** solid, dashed, dotted or dash-dot strokes, picked in the pen and pencil tabs (each
 >   pen remembers its own). Other Saber versions draw these strokes solid. ([`6005f64`](https://github.com/Delici0u-s/saber/commit/6005f64a))
+> - **Ruler:** the ruler button in the toolbar shows a straight edge. Drag its middle to move it; rotate
+>   it with two fingers, a trackpad or the mouse wheel (snaps to 15° steps, angle shown on the 0 mark).
+>   Strokes started near an edge run along it. Its marks are millimetres on the page, which are real
+>   millimetres at *Real size* zoom. ([`06ddf45`](https://github.com/Delici0u-s/saber/commit/06ddf45b))
 > - **Real size:** a HUD button (top left, next to the zoom lock) zooms so a page shows at its
 >   physical size: A4 wide, or the paper picked in the *Real size paper* setting (A5, B5, Letter, A3).
 >   Uses the screen density reported by Android or by the monitor on Linux, or the *Screen density*

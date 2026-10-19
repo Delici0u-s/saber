@@ -39,23 +39,12 @@ All checks pass on both branches: 64 tests, `dart format`.
 
 ## What's left
 
-### 1. PR comment (optional, yours)
-
-`92c70b3` is pushed and listed on PR #27. If not done yet, add a comment
-(`gh pr comment 27 -R steveruizok/perfect-freehand-dart --body "…"`), e.g.:
-
-> Two more fixes for taps: points that stay within `size` of the first one now count as a single
-> tap at the highest pressure (a real tap drifts by a fraction of a pixel, so the dot came out at
-> lift-off pressure). A lone point is also no longer given a helper point 1pt down-right, so dots
-> are round instead of short diagonal strokes. Goldens changed (only their dots): `one_point`,
-> `two_equal_points`, `stationary_points`, `short_strokes`.
-
-### 2. Respond to review on PR #27, if any
+### 1. Respond to review on PR #27, if any
 
 Make changes on `personal` first (that's what Saber uses), then bring them to
 `fix/stationary-dots` (cherry-pick, or squash if the reviewer asks for fewer commits).
 
-### 3. When the PR is released
+### 2. When the PR is released
 
 The override is manual: pub can't fall back to upstream by itself, and a merge isn't enough
 (the normal dependency comes from pub.dev). Once a `perfect_freehand` release on pub.dev has
@@ -65,7 +54,7 @@ raise `perfect_freehand: ^2.5.1` to that release, `flutter pub get`, test, commi
 Keep the override on `ref: personal` until then (not `fix/stationary-dots`): you control
 `personal`, while the PR branch may be rebased during review.
 
-### 4. Line styles for pen and pencil (done, `6005f64a`)
+### 3. Line styles for pen and pencil (done, `6005f64a`)
 
 Solid, dashed, dotted and dash-dot, picked in the pen tab (fountain and ballpoint pen) and the
 pencil tab; each pen remembers its own (`lastFountainPenLineStyle` etc.). The pattern lives in
@@ -78,22 +67,33 @@ Pressure is simulated along the whole stroke before it's cut into dashes, so das
 width when the stroke is finished. The area eraser cuts at its edge and keeps each part's place in
 the pattern (`lo`, `Stroke.lineStyleOffset`). Tested on the laptop; not yet on the tablet.
 
-### 5. Ruler (to do)
+### 4. Ruler (done, `06ddf45b`)
 
-A ruler tool. Not started; what exactly it should do (a straight edge to draw along, measuring in
-mm, both) still needs deciding.
+A straight edge with mm marks, toggled by the ruler button in the toolbar (`Ruler` and
+`RulerOverlay` in `lib/components/canvas/ruler.dart`). It lives on the screen, over the canvas
+(`CanvasGestureDetector`), so it stays put while scrolling and isn't saved or exported.
+- **Move and rotate:** drag its middle; rotate with two fingers, a trackpad or the mouse wheel.
+  Rotation snaps to multiples of 15° within 2°; the angle shows on the 0 mark.
+- **Drawing along it:** a pen stroke (any `Pen`, incl. highlighter and pencil) started within
+  `Ruler.snapDistance` (16 px) of an edge, on either side, has every point moved onto that edge,
+  half the stroke's width outside it (`EditorState._alongRuler`). Pointers in that band pass
+  through the ruler to the canvas; only its middle (48 px) moves it.
+- **Marks:** millimetres on the page as the *Real size paper* setting defines them
+  (`ScreenDensity.logicalPixelsPerMm × zoom / realSizeScale`), so they're real mm at real size zoom.
+  Labels in cm, counted both ways from 0; finer marks and labels are left out when zoomed out.
 
-### 6. Test on the devices (yours)
+### 5. Test on the devices (yours)
 
 - **Sync flicker** (`6d6d1e7`): tested on the laptop while watching the server, except the last
   change: images to load before a reload are now picked by which pages are on screen. Reinstall
   (`scripts/dev.sh linux install`) and check a reload of a note with images doesn't blink.
 - **Line styles and area eraser on the tablet** (`6005f64a`): draw dashed lines with the pen
   (real pressure, unlike the laptop's mouse) and erase across them.
-- **Strokes with corners when zoomed out:** below 0.9x zoom Saber draws strokes from every 4th point
-  without smoothing (`_zoomThreshold` in `_canvas_painter.dart`, upstream behaviour). Seen on the
-  laptop at about 0.7x. Lowering that cutoff (e.g. a separate 0.5 for stroke detail) would fix it at
-  some speed cost; check how it looks on the tablet first.
+- **Ruler** (`06ddf45b`): on the laptop and the tablet: move, rotate (two fingers / mouse wheel),
+  draw along both edges with the pen, and at *Real size* zoom, hold a real ruler to the screen to check its marks.
+- **Strokes with corners when zoomed out:** also in upstream Saber. Drawing in full detail down to
+  0.5x zoom (`3e39cc4`) didn't make them look smoother on the laptop and was reverted (`1690a0c`),
+  so the cause is elsewhere (maybe the mouse's coarse input). Check on the tablet with the pen.
 - **Tablet:** still on an older build. `scripts/dev.sh android install` brings the *Real size paper*
   setting and the flicker fix.
 
