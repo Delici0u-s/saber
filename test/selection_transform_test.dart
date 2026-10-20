@@ -6,6 +6,7 @@ import 'package:perfect_freehand/perfect_freehand.dart';
 import 'package:saber/components/canvas/_circle_stroke.dart';
 import 'package:saber/components/canvas/_rectangle_stroke.dart';
 import 'package:saber/components/canvas/_stroke.dart';
+import 'package:saber/components/canvas/stroke_shape.dart';
 import 'package:saber/data/editor/selection_transform.dart';
 import 'package:saber/data/flavor_config.dart';
 import 'package:sbn/has_size.dart';
@@ -130,7 +131,7 @@ void main() {
       expect(line.pointVectors.last, _near(const Offset(200, 150)));
     });
 
-    test('shapes stay shapes unless they can\'t', () {
+    test('shapes stay shapes, also rotated or stretched', () {
       final rectangle = RectangleStroke(
         color: Colors.black,
         pressureEnabled: false,
@@ -152,10 +153,24 @@ void main() {
       );
       const stretch = SelectionTransform(scaleX: 2);
       const turn = SelectionTransform(rotation: 0.3);
-      expect(stretch.apply(rectangle), isA<RectangleStroke>());
-      expect(turn.apply(rectangle), isNot(isA<RectangleStroke>()));
-      expect(turn.apply(circle), isA<CircleStroke>());
-      expect(stretch.apply(circle), isNot(isA<CircleStroke>()));
+      for (final transform in [stretch, turn]) {
+        expect((transform.apply(rectangle).shape! as PathShape).anchors, [
+          for (final corner in [
+            rect.topLeft,
+            rect.topRight,
+            rect.bottomRight,
+            rect.bottomLeft,
+          ])
+            _near(transform.map(corner)),
+        ]);
+      }
+      final stretched = stretch.apply(circle).shape! as EllipseShape;
+      expect(stretched.center, _near(stretch.map(const Offset(100, 100))));
+      expect(stretched.u.distance, closeTo(100, 1e-9));
+      expect(stretched.v.distance, closeTo(50, 1e-9));
+      final turned = turn.apply(circle).shape! as EllipseShape;
+      expect(turned.u.distance, closeTo(50, 1e-9));
+      expect(turned.v.distance, closeTo(50, 1e-9));
     });
 
     test('a thickness change only scales widths', () {

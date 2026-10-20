@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:saber/components/canvas/_stroke.dart';
 import 'package:saber/components/canvas/image/editor_image.dart';
+import 'package:saber/components/canvas/stroke_shape.dart';
 import 'package:saber/data/editor/selection_transform.dart';
 
 class SelectResult {
@@ -27,6 +28,12 @@ class SelectResult {
     required this.path,
     required this.pageIndexStart,
   });
+
+  /// The shape selected, if the selection is a single shape (which then
+  /// gets handles to reshape it, see [ShapeHandles]).
+  StrokeShape? get shape => strokes.length == 1 && images.isEmpty
+      ? StrokeShape.of(strokes.single)
+      : null;
 
   bool get isEmpty {
     return strokes.isEmpty && images.isEmpty;

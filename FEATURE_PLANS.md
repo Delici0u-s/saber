@@ -300,6 +300,182 @@ bucket is one idea of the kind meant. Categories to look through:
   (`importPdfFromFilePath`), so it imports only those. Thumbnails come from the PDF library Saber
   uses (pdfrx), rendered small and only for pages on screen.
 
+## 13. Shapes (plan, for confirmation, 2026-10-20)
+
+### What Saber does today
+
+- **Recognising:** the shape pen (live preview) and hold to shape (any pen) use the $1 recogniser
+  (`one_dollar_unistroke_recognizer`) for line, rectangle, circle, triangle and star.
+- **Saved as real shapes:** only `RectangleStroke` (axis-aligned) and `CircleStroke`
+  (`shape: 'rect'` / `'circle'` in the note). Lines, triangles, stars, and any shape with dashes,
+  dots or tape are saved as ordinary strokes through their points, so they can't be edited as
+  shapes afterwards.
+- **No ellipses, rotated rectangles, other polygons or arrows.** A rotated rectangle or stretched
+  circle turns into an ordinary stroke (`SelectionTransform`).
+- **Old versions:** a note with an unknown `shape` value logs it and loads the stroke from its
+  points (`Stroke.fromJson`, since 2023). So a new shape that also saves its outline points still
+  opens as a plain outline in the Flathub/Play Store Saber.
+
+### Elsewhere
+
+- **GoodNotes:** a Shapes tool (draw and pause → refined; keep the pen down to adjust it), with
+  circles, ellipses, rectangles, triangles, polygons, lines and newer arrows. Fill colour (a
+  transparent version of the colour) is set in the tool. Shapes are edited with the lasso
+  (resize/rotate box). Most-requested on its feedback board: editing a shape's points, reliable
+  regular polygons (hexagons for chemistry), and outline-only vs filled.
+- **Notability:** hold to snap; tap a shape's point to drag it (triangles, polygons); curves are
+  drawn with three points and adjusted; *Stroke and Fill* in the style menu.
+- **OneNote:** a gallery of shapes to place (lines, arrows, rectangle, ellipse, triangle,
+  parallelogram, coordinate axes) plus *Ink to shape*; placed shapes have point handles.
+- **Xournal++ (desktop):** drawing tools for rectangle, ellipse, arrow, double arrow, coordinate
+  system and spline, plus a recogniser.
+- **Common pattern:** two ways in (draw rough → recognised, or pick a shape and drag it out), and
+  one way to edit (select → box handles for the whole shape, point handles for its corners).
+
+### Plan
+
+**A. One editable shape type.** A new stroke type holding the shape's definition, which every
+other part (drawing, recognising, placing, editing) shares:
+- `kind`: line, arrow, double arrow, polyline (open), polygon (closed: triangle, rectangle, any
+  n-gon), ellipse (centre, two radii, rotation; a circle is an ellipse with equal radii).
+- Anchor points (corners / line ends; for an ellipse its centre and axis ends), the pen's colour,
+  size, line style, and an optional fill colour.
+- Saved as `shape: 'shape'` with its anchors **and** its outline points (`p`), so old versions show
+  the outline (without fill). The existing `rect`/`circle` still load as now and become the new
+  type when edited.
+- Dashes, dots and tape work on all of it (drawn along the outline, as now), and stay shapes.
+
+**B. Better recognising** (shape pen and hold to shape):
+- Replace the $1 guess for straight-sided shapes with corner finding: simplify the stroke to its
+  corners; a closed stroke with n corners is an n-gon, an open one a polyline; an open stroke with
+  a short "V" at one end is an arrow.
+- Ellipse fit for round closed strokes (circle when the radii are close).
+- **Tidy up (snapping):** angles near 0/90/45° (and 15° steps, like the ruler) snap; a
+  nearly-regular polygon becomes regular; a nearly-square rectangle a square; nearly-equal radii a
+  circle. One setting to turn tidying off.
+- Like GoodNotes: after the shape appears, keep the pen down and move it to resize the shape
+  before lifting.
+
+**C. Placing shapes.** *Shapes* in the *Insert* group opens a row of samples: line, arrow, double
+arrow, rectangle, ellipse, triangle, polygon (n chosen in the row, 3–12), coordinate axes. Pick one,
+then drag on the page: from corner to corner (or along the line). It uses the current pen's colour,
+size and line style; holding Shift (desktop) or a second finger keeps proportions (square, circle,
+regular polygon, 15° lines). It stays in that shape until you pick another tool.
+
+**D. Editing shapes.** Selecting a single shape (lasso, box, or tapping it with the select tool)
+shows, besides the existing box (move, resize, rotate), a handle on each anchor:
+- Drag a corner / line end to move it; snaps to 15° angles, to other anchors and to the ruler's
+  edge. Ellipse: its axis handles change each radius.
+- A handle in the middle of each side adds a corner there (polygon) or bends the line (curve via
+  that point, like Notability; for later, see the questions).
+- One undo step per drag, like the other selection actions.
+- Rotating or stretching a shape keeps it a shape (it no longer turns into an ordinary stroke).
+
+**E. Fill.** Closed shapes can be filled (exports include it). Replaced by the *Fill* tool, see
+*Decided* below.
+
+### Order and effort
+
+1. **A + D** (L): the shape type, anchor handles, saving with the outline fallback. Recognised
+   rectangles and circles become editable right away.
+2. **B** (M): corner finding, ellipses, arrows, tidying.
+3. **C** (M): the *Shapes* row in Insert and drag-to-place.
+4. **E** (S).
+
+Tests: every kind saved and loaded, loaded as points by the old code path, edited through the real
+editor; recognising on sample strokes (clean, sloppy, sloppy-but-not-a-shape); handles at phone
+and desktop sizes.
+
+### Decided (2026-10-20)
+
+- **Order:** A + D first, then B, then C, then E.
+- **Curves in the first version:** bending a side through its middle handle.
+- **Shapes row:** the proposed samples plus more (e.g. parallelogram, star), and easy to extend:
+  each sample is one entry in a list (see 13a), so adding a shape later is one entry.
+- **Fill is a tool:** a *Fill* (bucket) tool next to the pens, using the normal colour bar (and
+  the eyedropper, once there is one), instead of an option on the shape. First version: tap a
+  closed shape to fill it. Filling any area closed by strokes (section 11) can extend the same
+  tool later.
+- **Hold to shape on the normal pens** gets the new shapes too.
+
+### 13a. Detailed design of the first step: editable shapes (A + D, for confirmation)
+
+**The shape (data):**
+- `ShapeStroke`, a stroke defined by **anchors**: a list of points, each a *corner* or *smooth*.
+  A side between two corners is straight; next to a smooth anchor it curves through the anchors
+  (a smooth curve through the points, like Notability's curves).
+- `closed` (polygon) or open (line, polyline, curve), and an **arrow head** at the start and/or
+  end (open shapes only). So an arrow is a line with a head, and a curved arrow is free.
+- `fill`: none or a colour (set by the Fill tool, step E).
+- Ellipses are their own kind (`EllipseStroke`: centre, two radii, rotation), as an ellipse isn't
+  exact as a curve through points. A circle is an ellipse with equal radii.
+- Constant width (like today's shapes), colour, size, line style (dashes/dots along the outline),
+  tape.
+- **In the note:** `shape: 'path'` or `'ellipse'` with the anchors, smooth flags, closed, heads
+  and fill, **plus the outline points** (`p`), which old Saber versions draw as a plain stroke.
+  Existing `rect`/`circle` load as now and become a `ShapeStroke`/`EllipseStroke` when edited.
+- **Shape samples** (for step C, and the hook for adding shapes): a list of entries, each with a
+  name, an icon and a function from the dragged-out box to the anchors (e.g. parallelogram: four
+  corners sheared by a quarter of the width). Recognising (B) produces the same shapes.
+
+**From step 1 on, recognised shapes are `ShapeStroke`s:** lines, rectangles (including rotated
+ones), triangles, stars, and dashed/dotted/taped shapes, which are ordinary strokes today. Circles
+become `EllipseStroke`s.
+
+**Editing (select a single shape):**
+- The box with its handles stays (move, resize, rotate). Rotating or stretching keeps it a shape:
+  the anchors (or the ellipse's centre, radii, rotation) are transformed.
+- **Anchor handles:** a round handle on each anchor (ellipse: on its four axis ends). Drag one to
+  move it; it snaps to 15° from its neighbours, onto other anchors and onto the ruler's edge
+  (when the ruler is on). An ellipse's axis handle changes that radius.
+- **Middle handles:** a smaller handle in the middle of each side. Dragging it adds a *smooth*
+  anchor there, which bends that side into a curve.
+- **Tapping an anchor** opens a small bar beside it with labelled buttons: *Corner* / *Smooth*
+  (toggles), *Delete point* (not offered when it would leave fewer than 2, or 3 for a closed shape).
+- When several things are selected, only the box shows (as now).
+- Handles keep their size on screen and are big enough for a finger, like the box's. When anchors
+  are too close together on screen, the middle handles are hidden first.
+- One undo step per drag or button, like the other selection actions.
+
+**Not in this step:** recognising new shapes (B), the *Shapes* row (C), the Fill tool (E).
+
+**Connectors (wanted, later):** two shapes sharing a point, so moving one drags the other's end
+along. Prepared for: anchors already snap onto other shapes' anchors on the page. Still needed:
+strokes have no lasting ids in a note, so an anchor can't name another shape's anchor yet; that
+needs an id per shape stroke (saved, kept by copies and undo), an `attachedTo` on `ShapeAnchor`,
+and moving attached anchors along whenever a shape changes (move, transform, reshape, erase).
+
+### 13b. Built (2026-10-20, step 1)
+
+- **One shape model, no new stroke class:** a `Stroke` has an optional `shape`
+  (`components/canvas/stroke_shape.dart`: `PathShape` with anchors, closed, arrow heads;
+  `EllipseShape` with centre and two perpendicular semi-axes). `setShape` puts the stroke's points
+  along the shape (about a stroke width apart, so the outline keeps an even width), so the eraser,
+  lasso, line styles, tape, exports and older Saber versions work unchanged. Changing the points
+  (e.g. the area eraser cutting it) makes it an ordinary stroke.
+- **Saved** as `shape: 'path'` (`sa` anchors, `ss` smooth indices, `sc` closed, `sh` heads) or
+  `'ellipse'` (`se`), plus the points. Old `rect`/`circle` load as before and become shapes when
+  transformed or reshaped.
+- **Recognised shapes are shapes now:** lines (also auto-straightened ones), rectangles, circles
+  (ellipses), triangles, stars, also dashed/dotted/taped. Rotated or stretched, they stay shapes.
+- **Editing:** `data/editor/shape_handles.dart` (handles, hit testing, snapping onto anchors on
+  the page, then the ruler, then 15° lines from neighbours and their crossing); wired into the
+  selection in `editor.dart` (`_SelectionChange.reshape`, `_reshapeSelection`, `_tapAnchor`).
+  Tapping an anchor opens a menu (*Smooth*/*Corner*, *Delete point*). A drag that reshapes isn't
+  also a tap, and taps on anchors don't count as double taps (double-tap to erase).
+- **Changed on the way:** middle handles hide when a side is under two finger widths on screen.
+- **After testing on the tablet:** tapping a stroke or image with a selection tool selects it (the
+  nearest within a finger's reach; `Select.selectAt`), tapping nothing unselects, tapping inside
+  the selection keeps it; tape still opens/closes on tap. A handle only starts moving once the pen
+  has moved as far as a tap may (`kTouchSlop`), so a stylus tap on a corner opens its menu instead
+  of nudging it; and a handle moves with the pen wherever it was grabbed (no jump).
+- **Tests:** `test/stroke_shape_test.dart`, `test/shape_editing_test.dart` (through the editor),
+  updated `hold_to_shape_test.dart` and `selection_transform_test.dart`.
+
+**Tests:** save and load each kind; old notes with `rect`/`circle`; loading a new shape through the
+old code path (as points); dragging each handle type through the real editor (corner, middle,
+ellipse axis, snapping); the anchor bar; undo/redo; phone and desktop sizes; many anchors.
+
 ## Order
 
 1. ~~Opacity, scribble to erase~~ (built)
@@ -308,4 +484,5 @@ bucket is one idea of the kind meant. Categories to look through:
 4. ~~Tape, double tap to erase~~ (built, fixed after feedback)
 5. ~~Toolbar clean-up (section 10)~~ (built: *Tools*, fullscreen stays one tap)
 6. ~~Choosing PDF pages (section 12)~~ (built)
-7. Research for section 11
+7. Research for section 11 (shapes done: section 13; the other categories next)
+8. Shapes (section 13): ~~step 1 (13a)~~ built (13b); next B (recognising), C, E

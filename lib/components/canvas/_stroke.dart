@@ -8,6 +8,7 @@ import 'package:one_dollar_unistroke_recognizer/one_dollar_unistroke_recognizer.
 import 'package:perfect_freehand/perfect_freehand.dart';
 import 'package:saber/components/canvas/_circle_stroke.dart';
 import 'package:saber/components/canvas/_rectangle_stroke.dart';
+import 'package:saber/components/canvas/stroke_shape.dart';
 import 'package:saber/data/extensions/list_extensions.dart';
 import 'package:saber/data/extensions/point_extensions.dart';
 import 'package:saber/data/tools/line_style.dart';
@@ -46,6 +47,39 @@ class Stroke {
   /// versions ignore, so there it's an ordinary opaque stroke.
   bool isTape;
 
+  /// The shape this stroke is drawn along, if it's one that can be edited as
+  /// a shape (see [setShape]). Changing its points makes it an ordinary
+  /// stroke.
+  StrokeShape? get shape => _shape;
+  StrokeShape? _shape;
+
+  /// Makes this stroke [shape]: its points go along the shape, with an even
+  /// width and without tapers, which would round its corners.
+  void setShape(StrokeShape shape) {
+    _shape = shape;
+    pressureEnabled = false;
+    options
+      ..simulatePressure = false
+      ..streamline = 0
+      ..isComplete = true
+      // Copies: the ends may be shared with the pen's options.
+      ..start = options.start.copyWith(
+        taperEnabled: false,
+        customTaper: options.start.customTaper,
+      )
+      ..end = options.end.copyWith(
+        taperEnabled: false,
+        customTaper: options.end.customTaper,
+      );
+    points
+      ..clear()
+      ..addAll([
+        for (final point in shape.outline(options.size))
+          PointVector.fromOffset(offset: point),
+      ]);
+    markPolygonNeedsUpdating();
+  }
+
   /// Whether this tape is tapped open, showing what's under it. Not saved:
   /// tape is hidden whenever the note is opened.
   var tapeRevealed = false;
@@ -83,6 +117,7 @@ class Stroke {
     if (offset == .zero) return;
 
     points.shift(offset);
+    _shape = _shape?.shift(offset);
     _lowQualityPieces?.forEach((piece) => piece.shift(offset));
     _highQualityPieces?.forEach((piece) => piece.shift(offset));
     _lowQualityPolygon?.shift(offset);
@@ -136,6 +171,9 @@ class Stroke {
           pageIndex: pageIndex,
           page: page,
         );
+      case PathShape.jsonName || EllipseShape.jsonName:
+        // An ordinary stroke along the shape, which is set below.
+        break;
       default:
         log.severe('Unknown shape: ${json['shape']}');
     }
@@ -183,16 +221,18 @@ class Stroke {
     }
 
     return Stroke(
-      color: color,
-      pressureEnabled: pressureEnabled,
-      options: options,
-      pageIndex: pageIndex,
-      page: page,
-      toolId: toolId,
-      lineStyle: .fromJson(json['ls']),
-      lineStyleOffset: (json['lo'] as num?)?.toDouble() ?? 0,
-      isTape: json['tape'] == true,
-    )..points.addAll(points);
+        color: color,
+        pressureEnabled: pressureEnabled,
+        options: options,
+        pageIndex: pageIndex,
+        page: page,
+        toolId: toolId,
+        lineStyle: .fromJson(json['ls']),
+        lineStyleOffset: (json['lo'] as num?)?.toDouble() ?? 0,
+        isTape: json['tape'] == true,
+      )
+      ..points.addAll(points)
+      .._shape = StrokeShape.fromJson(json);
   }
   Map<String, dynamic> toJson() {
     // these json keys should not be the same as the ones in [StrokeOptions.toJson]
@@ -209,6 +249,7 @@ class Stroke {
       if (lineStyle != .solid) 'ls': lineStyle.name,
       if (lineStyle != .solid && lineStyleOffset != 0) 'lo': lineStyleOffset,
       if (isTape) 'tape': true,
+      ...?shape?.toJson(),
     }..addAll(options.toJson());
   }
 
@@ -220,6 +261,7 @@ class Stroke {
     }
 
     points.add(PointVector(point.dx, point.dy, pressure));
+    _shape = null;
     markPolygonNeedsUpdating();
   }
 
@@ -235,11 +277,13 @@ class Stroke {
     points
       ..clear()
       ..addAll(newPoints);
+    _shape = null;
     markPolygonNeedsUpdating();
   }
 
   void popFirstPoint() {
     points.removeAt(0);
+    _shape = null;
     markPolygonNeedsUpdating();
   }
 
@@ -299,6 +343,10 @@ class Stroke {
     .high => options,
   };
 
+  /// How many points [quality] uses one of (see [StrokeQuality.N]): all of
+  /// a [shape]'s, so none of its corners are skipped.
+  int _skippedFor(StrokeQuality quality) => shape == null ? quality.N : 1;
+
   @protected
   List<Offset> getPolygon({required StrokeQuality quality}) {
     if (!pressureEnabled) {
@@ -308,7 +356,7 @@ class Stroke {
         quality == .high && options.simulatePressure && options.isComplete;
 
     final polygon = getStroke(
-      skipPoints(points, quality.N),
+      skipPoints(points, _skippedFor(quality)),
       options: _optionsForQuality(isDot ? _untaperedOptions : options, quality),
       rememberSimulatedPressure: rememberSimulatedPressure,
     );
@@ -337,11 +385,11 @@ class Stroke {
 
     // Pressure is simulated along the whole stroke, like for a solid one:
     // per piece, each would get its own, which changes once it's finished.
-    var line = skipPoints(points, quality.N);
+    var line = skipPoints(points, _skippedFor(quality));
     if (pieceOptions.simulatePressure) {
       if (quality == .high && options.isComplete) {
         getPolygon(quality: quality); // remembers it in [points]
-        line = skipPoints(points, quality.N);
+        line = skipPoints(points, _skippedFor(quality));
       } else {
         line = List.of(line);
         getStroke(line, options: pieceOptions, rememberSimulatedPressure: true);
@@ -533,34 +581,15 @@ class Stroke {
     return sqrLength >= sqrMinLength;
   }
 
-  /// Replaces the points in this stroke with a straight line.
+  /// Makes this stroke a straight line (a [PathShape]) from its first point
+  /// to its last.
   ///
   /// If the resulting line is close to horizontal or vertical,
   /// it will be snapped to be exactly horizontal or vertical.
   void convertToLine() {
     assert(points.length >= 2);
-
-    // Use the average pressure
-    final pressure = points.map((point) => point.pressure ?? 0.5).average;
-    var firstPoint = PointVector.fromOffset(
-      offset: points.first,
-      pressure: pressure,
-    );
-    var lastPoint = PointVector.fromOffset(
-      offset: points.last,
-      pressure: pressure,
-    );
-
-    // Snap to the horizontal or vertical axis
-    (firstPoint, lastPoint) = snapLine(firstPoint, lastPoint);
-
-    points.clear();
-    points.add(firstPoint);
-    points.add(lastPoint);
-    points.add(lastPoint);
-    options.isComplete = true;
-    options.start.taperEnabled = false;
-    options.end.taperEnabled = false;
+    final (firstPoint, lastPoint) = snapLine(points.first, points.last);
+    setShape(PathShape.line(firstPoint, lastPoint));
   }
 
   /// Snaps a line to either horizontal or vertical
@@ -591,17 +620,20 @@ class Stroke {
     }
   }
 
-  Stroke copy() => Stroke(
-    color: color,
-    pressureEnabled: pressureEnabled,
-    options: options.copyWith(),
-    pageIndex: pageIndex,
-    page: page,
-    toolId: toolId,
-    lineStyle: lineStyle,
-    lineStyleOffset: lineStyleOffset,
-    isTape: isTape,
-  )..points.addAll(points);
+  Stroke copy() =>
+      Stroke(
+          color: color,
+          pressureEnabled: pressureEnabled,
+          options: options.copyWith(),
+          pageIndex: pageIndex,
+          page: page,
+          toolId: toolId,
+          lineStyle: lineStyle,
+          lineStyleOffset: lineStyleOffset,
+          isTape: isTape,
+        )
+        ..points.addAll(points)
+        .._shape = _shape;
 }
 
 enum StrokeQuality(

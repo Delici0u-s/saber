@@ -15,8 +15,6 @@ import 'package:logging/logging.dart';
 import 'package:path/path.dart' as p;
 import 'package:pdfrx/pdfrx.dart';
 import 'package:saber/components/canvas/_asset_cache.dart';
-import 'package:saber/components/canvas/_circle_stroke.dart';
-import 'package:saber/components/canvas/_rectangle_stroke.dart';
 import 'package:saber/components/canvas/_stroke.dart';
 import 'package:saber/components/canvas/canvas.dart';
 import 'package:saber/components/canvas/canvas_gesture_detector.dart';
@@ -25,6 +23,7 @@ import 'package:saber/components/canvas/image/editor_image.dart';
 import 'package:saber/components/canvas/ruler.dart';
 import 'package:saber/components/canvas/save_indicator.dart';
 import 'package:saber/components/canvas/select_result.dart';
+import 'package:saber/components/canvas/stroke_shape.dart';
 import 'package:saber/components/canvas/zoom_window.dart';
 import 'package:saber/components/editor/read_only_banner.dart';
 import 'package:saber/components/home/search_notes_button.dart';
@@ -41,6 +40,7 @@ import 'package:saber/data/editor/editor_exporter.dart';
 import 'package:saber/data/editor/editor_history.dart';
 import 'package:saber/data/editor/page.dart';
 import 'package:saber/data/editor/selection_transform.dart';
+import 'package:saber/data/editor/shape_handles.dart';
 import 'package:saber/data/extensions/change_notifier_extensions.dart';
 import 'package:saber/data/extensions/matrix4_extensions.dart';
 import 'package:saber/data/file_manager/file_manager.dart';
@@ -750,6 +750,7 @@ class EditorState extends State<Editor> {
 
   void onDrawStart(ScaleStartDetails details) {
     _shortcutTarget = this;
+    _reshapedInGesture = false;
     if (details.sourceTimeStamp case final time?) {
       _recentDrawStarts.add((time: time, historyLength: history.length));
       if (_recentDrawStarts.length > _recentDrawStartsKept) {
@@ -790,10 +791,29 @@ class EditorState extends State<Editor> {
           select.doneSelecting &&
           result.owner == this &&
           result.pageIndex == dragPageIndex!;
-      final box = selectedHere
-          ? result.box?.copyWith(pixel: 1 / _screenScaleOf(page))
-          : null;
-      if (box?.handleAt(position) case final handle?) {
+      final pixel = 1 / _screenScaleOf(page);
+      final box = selectedHere ? result.box?.copyWith(pixel: pixel) : null;
+      final boxHandle = box?.handleAt(position);
+      final shapeHandles = switch (result.shape) {
+        final shape? when selectedHere => ShapeHandles(
+          shape: shape,
+          pixel: pixel,
+        ),
+        _ => null,
+      };
+      final shapeHandle = shapeHandles?.handleAt(position);
+      if (shapeHandle != null &&
+          (boxHandle == null ||
+              shapeHandle.$2 <=
+                  (box!.handlePosition(boxHandle) - position).distance)) {
+        // reshape in onDrawUpdate
+        _selectionChange = _SelectionChange(
+          select,
+          shapeHandles: shapeHandles,
+          shapeHandle: shapeHandle.$1,
+          start: position,
+        );
+      } else if (boxHandle case final handle?) {
         // resize or rotate in onDrawUpdate
         _selectionChange = _SelectionChange(
           select,
@@ -853,6 +873,9 @@ class EditorState extends State<Editor> {
       }
       _setEraserOutline(page, position);
       removeExcessPages();
+    } else if (_selectionChange case final change?
+        when change.shapeHandle != null) {
+      _reshapeSelection(change, page, details.focalPoint, position);
     } else if (_selectionChange case final change? when change.handle != null) {
       change.update(
         page,
@@ -1356,6 +1379,7 @@ class EditorState extends State<Editor> {
       .lastOrNull;
 
   /// Tapping tape (with anything) shows what's under it, or hides it again.
+  /// Otherwise, a selection tool selects what's tapped (see [_tapSelect]).
   void _onTap(PointerDeviceKind kind, Offset position) {
     // After the tap's own gesture, which may have drawn a dot (see
     // [onDrawEnd]).
@@ -1364,8 +1388,12 @@ class EditorState extends State<Editor> {
       final pageIndex = onWhichPageIsFocalPoint(position);
       if (pageIndex == null) return;
       final page = coreInfo.pages[pageIndex];
+      if (_tapAnchor(page, position)) return;
       final tape = _tapeAt(page, page.renderBox!.globalToLocal(position));
-      if (tape == null) return;
+      if (tape == null) {
+        _tapSelect(pageIndex, position);
+        return;
+      }
       tape.tapeRevealed = !tape.tapeRevealed;
       page.redrawStrokes();
     });
@@ -1382,7 +1410,7 @@ class EditorState extends State<Editor> {
   /// Switches to the eraser, or back, if [kind] double-tapping does so (see
   /// [Stows.doubleTapToErase]), taking back what the taps (starting [since])
   /// drew or erased. Not on tape at [position], whose taps open and close it
-  /// (see [_onTap]).
+  /// (see [_onTap]), nor on a selected shape's anchor (see [_tapAnchor]).
   void _onDoubleTap(PointerDeviceKind kind, Offset position, Duration since) {
     if (!DoubleTapToErase.fromJson(stows.doubleTapToErase.value)
         .accepts(kind)) {
@@ -1393,6 +1421,8 @@ class EditorState extends State<Editor> {
       if (_tapeAt(page, page.renderBox!.globalToLocal(position)) != null) {
         return;
       }
+      // Taps on a selected shape's anchors open their menus instead.
+      if (_anchorAt(page, position) != null) return;
     }
     // The gesture of the second tap may end after this.
     scheduleMicrotask(() {
@@ -1414,8 +1444,166 @@ class EditorState extends State<Editor> {
     });
   }
 
-  /// A resize, rotation or thickness change of the selection in progress.
+  /// A resize, rotation, reshape or thickness change of the selection in
+  /// progress.
   _SelectionChange? _selectionChange;
+
+  /// Whether the current (or last) drawing gesture reshaped the selected
+  /// shape, so it isn't also a tap on it (see [_tapAnchor]): a short, quick
+  /// drag counts as both.
+  var _reshapedInGesture = false;
+
+  /// Reshapes the selected shape by dragging [change]'s handle to
+  /// [position] on [page] ([globalPosition] on screen): along the ruler
+  /// when it's against it, else snapped to other anchors and angles (see
+  /// [ShapeHandles.drag]).
+  void _reshapeSelection(
+    _SelectionChange change,
+    EditorPage page,
+    Offset globalPosition,
+    Offset position,
+  ) {
+    final selected = change.select.selectResult.strokes;
+    final handles = change.shapeHandles!, handle = change.shapeHandle!;
+    final start = change.start!;
+    // Not until the pen has moved as far as a tap may (see
+    // [CanvasGestureDetector.onTap]), so a tap opens the anchor's menu (see
+    // [_tapAnchor]) instead of nudging it.
+    if (!change.reshaping) {
+      if ((position - start).distance * _screenScaleOf(page) <= kTouchSlop) {
+        return;
+      }
+      change.reshaping = true;
+    }
+    // The handle moves with the pen, wherever on it it was grabbed.
+    position += handles.positionOf(handle) - start;
+    final snap = change.rulerSnap = ruler.snapFor(
+      page.renderBox!.localToGlobal(position),
+      current: change.rulerSnap,
+    );
+    if (snap != null) {
+      final halfWidth =
+          change.strokes.single.options.size / 2 * _screenScaleOf(page);
+      position = page.renderBox!.globalToLocal(
+        snap.project(page.renderBox!.localToGlobal(position), gap: halfWidth),
+      );
+    }
+    final (shape, _) = handles.drag(
+      handle,
+      position,
+      targets: [
+        for (final stroke in page.strokes)
+          if (!selected.contains(stroke)) ...?StrokeShape.of(stroke)?.anchors,
+      ],
+      snapped: snap != null,
+    );
+    change.reshape(page, shape);
+  }
+
+  /// With a selection tool, tapping a stroke or image (at [globalPosition]
+  /// on page [pageIndex]) selects it, unless it's on what's selected already
+  /// (its box or handles, which a drag there moves or changes); tapping
+  /// nothing unselects.
+  void _tapSelect(int pageIndex, Offset globalPosition) {
+    final select = currentTool;
+    if (select is! Select) return;
+    final page = coreInfo.pages[pageIndex];
+    final position = page.renderBox!.globalToLocal(globalPosition);
+    final result = select.selectResult;
+    final box = result.box?.copyWith(pixel: 1 / _screenScaleOf(page));
+    if (select.doneSelecting &&
+        result.owner == this &&
+        result.pageIndex == pageIndex &&
+        box != null &&
+        (box.rect.contains(position) || box.handleAt(position) != null)) {
+      return;
+    }
+    setState(() {
+      final selected = select.selectAt(
+        position,
+        pageIndex,
+        page.strokes,
+        page.images,
+        reach: SelectionBox.grabRadius / _screenScaleOf(page),
+      );
+      if (!selected) {
+        select.unselect();
+        return;
+      }
+      select.selectResult.owner = this;
+      _fitSelectionBox(select);
+    });
+  }
+
+  /// The selected shape (on [page]) and the index of its anchor at
+  /// [globalPosition], if there is one there.
+  (Select, PathShape, int)? _anchorAt(EditorPage page, Offset globalPosition) {
+    final select = currentTool;
+    if (select is! Select || !select.doneSelecting) return null;
+    final result = select.selectResult;
+    if (result.owner != this || page != coreInfo.pages[result.pageIndex]) {
+      return null;
+    }
+    final shape = result.shape;
+    if (shape is! PathShape) return null;
+    final handle = ShapeHandles(
+      shape: shape,
+      pixel: 1 / _screenScaleOf(page),
+    ).handleAt(page.renderBox!.globalToLocal(globalPosition))?.$1;
+    if (handle == null || handle.middle) return null;
+    return (select, shape, handle.index);
+  }
+
+  /// If [globalPosition] is on an anchor of the selected shape (on [page]),
+  /// opens a menu of what can be done with it (see [_AnchorAction]) and
+  /// returns true.
+  bool _tapAnchor(EditorPage page, Offset globalPosition) {
+    if (_reshapedInGesture) return false;
+    final anchor = _anchorAt(page, globalPosition);
+    if (anchor == null) return false;
+    final (select, shape, index) = anchor;
+    final result = select.selectResult;
+
+    final actions = [
+      if (shape.canBeSmooth(index) && shape.points[index].smooth)
+        _AnchorAction.corner
+      else if (shape.canBeSmooth(index))
+        _AnchorAction.smooth,
+      if (shape.canRemoveAnchor) _AnchorAction.delete,
+    ];
+    if (actions.isEmpty) return false;
+
+    final overlay =
+        Overlay.of(context).context.findRenderObject()! as RenderBox;
+    final onScreen = overlay.globalToLocal(
+      page.renderBox!.localToGlobal(shape.points[index].position),
+    );
+    showMenu<_AnchorAction>(
+      context: context,
+      position: RelativeRect.fromRect(
+        Rect.fromCircle(center: onScreen, radius: SelectionBox.grabRadius),
+        Offset.zero & overlay.size,
+      ),
+      items: [
+        for (final action in actions)
+          PopupMenuItem(value: action, child: Text(action.label)),
+      ],
+    ).then((action) {
+      if (action == null || !mounted || !select.doneSelecting) return;
+      if (select.selectResult != result || result.shape != shape) return;
+      final change = _SelectionChange(select);
+      setState(() {
+        change.reshape(page, switch (action) {
+          .corner => shape.withSmooth(index, false),
+          .smooth => shape.withSmooth(index, true),
+          .delete => shape.withoutAnchor(index),
+        });
+        _finishSelectionChange(change);
+      });
+      autosaveAfterDelay();
+    });
+    return true;
+  }
 
   /// How many screen pixels a unit of [page] takes up (the zoom times how
   /// much the page is scaled to fit), or the zoom if it isn't laid out.
@@ -1450,9 +1638,10 @@ class EditorState extends State<Editor> {
   void _finishSelectionChange(_SelectionChange change) {
     final result = change.select.selectResult;
     final page = coreInfo.pages[result.pageIndex];
-    if (change.transform.isIdentity) {
+    if (change.isUnchanged) {
       change.revert(page);
     } else {
+      if (change.shapeHandle != null) _reshapedInGesture = true;
       history.recordChange(
         EditorHistoryItem(
           type: .transform,
@@ -1516,7 +1705,7 @@ class EditorState extends State<Editor> {
     // Only writing pens: scribbling with a highlighter or tape covers
     // things up, and shapes (e.g. from hold to shape) aren't scribbles.
     if (pen is Highlighter || pen is Tape || pen is ShapePen) return false;
-    if (stroke is CircleStroke || stroke is RectangleStroke) return false;
+    if (StrokeShape.of(stroke) != null) return false;
 
     final erased = ScribbleErase.erasedBy(stroke, page.strokes);
     if (erased.isEmpty) return false;
@@ -1593,7 +1782,7 @@ class EditorState extends State<Editor> {
           ),
         );
       } else if (_selectionChange case final change?
-          when change.handle != null) {
+          when change.handle != null || change.shapeHandle != null) {
         _selectionChange = null;
         _finishSelectionChange(change);
       } else if (currentTool is SelectLasso || currentTool is SelectBox) {
@@ -3133,15 +3322,35 @@ class EditorState extends State<Editor> {
   }
 }
 
+/// What can be done with an anchor of a selected shape (see
+/// [EditorState._tapAnchor]).
+enum _AnchorAction {
+  corner,
+  smooth,
+  delete;
+
+  String get label => switch (this) {
+    corner => t.editor.shapes.corner,
+    smooth => t.editor.shapes.smooth,
+    delete => t.editor.shapes.deletePoint,
+  };
+}
+
 /// A resize, rotation or thickness change of a selection in progress: the
 /// selection as it was when it started, which each step transforms anew.
 class _SelectionChange {
-  new(this.select, {this.handle, this.box, this.start})
-    : strokes = List.of(select.selectResult.strokes),
-      imageRects = {
-        for (final image in select.selectResult.images) image: image.dstRect,
-      },
-      path = select.selectResult.path;
+  new(
+    this.select, {
+    this.handle,
+    this.box,
+    this.start,
+    this.shapeHandles,
+    this.shapeHandle,
+  }) : strokes = List.of(select.selectResult.strokes),
+       imageRects = {
+         for (final image in select.selectResult.images) image: image.dstRect,
+       },
+       path = select.selectResult.path;
 
   final Select select;
 
@@ -3150,6 +3359,34 @@ class _SelectionChange {
   final SelectionHandle? handle;
   final SelectionBox? box;
   final Offset? start;
+
+  /// The handle on the selected shape being dragged and the handles it's
+  /// one of, or null if it isn't a reshape.
+  final ShapeHandles? shapeHandles;
+  final ShapeHandle? shapeHandle;
+
+  /// The ruler side a reshaped anchor is dragged along, if any.
+  RulerSnap? rulerSnap;
+
+  /// Whether the handle has been dragged far enough to reshape (see
+  /// [EditorState._reshapeSelection]).
+  var reshaping = false;
+
+  /// The shape the selected one was changed to, if it was reshaped.
+  StrokeShape? _reshaped;
+
+  /// Whether the selection is as it was.
+  bool get isUnchanged =>
+      transform.isIdentity &&
+      (_reshaped == null || _reshaped == StrokeShape.of(strokes.single));
+
+  /// Changes the selected shape (on [page]) to [shape].
+  void reshape(EditorPage page, StrokeShape shape) {
+    _reshaped = shape;
+    final reshaped = Pen.shapeStroke(strokes.single, shape);
+    _replaceSelected(page, [reshaped]);
+    select.selectResult.path = Path()..addPath(reshaped.lowQualityPath, .zero);
+  }
 
   /// The selection as it was.
   final List<Stroke> strokes;

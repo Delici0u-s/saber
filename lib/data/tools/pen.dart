@@ -1,14 +1,12 @@
 import 'dart:async';
-import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:logging/logging.dart';
 import 'package:one_dollar_unistroke_recognizer/one_dollar_unistroke_recognizer.dart';
 import 'package:perfect_freehand/perfect_freehand.dart';
-import 'package:saber/components/canvas/_circle_stroke.dart';
-import 'package:saber/components/canvas/_rectangle_stroke.dart';
 import 'package:saber/components/canvas/_stroke.dart';
+import 'package:saber/components/canvas/stroke_shape.dart';
 import 'package:saber/data/editor/page.dart';
 import 'package:saber/data/prefs.dart';
 import 'package:saber/data/tools/_tool.dart';
@@ -202,10 +200,10 @@ class Pen extends Tool {
     return shape == null ? stroke : toShape(stroke, shape);
   }
 
-  /// Replaces [rawStroke] with the recognized [shape],
-  /// keeping the stroke's color, options, tool and line style.
+  /// Replaces [rawStroke] with the recognized [shape] (one that can be
+  /// edited as a shape, see [StrokeShape]), keeping the stroke's color,
+  /// options, tool and line style.
   static Stroke toShape(Stroke rawStroke, RecognizedUnistroke shape) {
-    final lineStyle = rawStroke.lineStyle;
     switch (shape.name) {
       case null:
         log.info('Detected unknown shape');
@@ -216,95 +214,50 @@ class Pen extends Tool {
       case DefaultUnistrokeNames.rectangle:
         final rect = shape.convertToRect();
         log.info('Detected rectangle: $rect');
-        // A styled one (or tape) is drawn along its outline, in dashes or
-        // dots.
-        if (lineStyle != .solid || rawStroke.isTape) {
-          return outlineStroke(rawStroke, [
+        return shapeStroke(
+          rawStroke,
+          PathShape.polygon([
             rect.topLeft,
             rect.topRight,
             rect.bottomRight,
             rect.bottomLeft,
-            rect.topLeft,
-          ]);
-        }
-        return RectangleStroke(
-          color: rawStroke.color,
-          pressureEnabled: rawStroke.pressureEnabled,
-          options: rawStroke.options,
-          pageIndex: rawStroke.pageIndex,
-          page: rawStroke.page,
-          toolId: rawStroke.toolId,
-          rect: rect,
+          ]),
         );
       case DefaultUnistrokeNames.circle:
         final (center, radius) = shape.convertToCircle();
         log.info('Detected circle: c=$center, r=$radius');
-        if (lineStyle != .solid || rawStroke.isTape) {
-          return outlineStroke(
-            rawStroke,
-            circleOutline(center, radius, rawStroke.options.size),
-          );
-        }
-        return CircleStroke(
-          color: rawStroke.color,
-          pressureEnabled: rawStroke.pressureEnabled,
-          options: rawStroke.options,
-          pageIndex: rawStroke.pageIndex,
-          page: rawStroke.page,
-          toolId: rawStroke.toolId,
-          radius: radius,
-          center: center,
+        return shapeStroke(
+          rawStroke,
+          EllipseShape(
+            center: center,
+            u: Offset(radius, 0),
+            v: Offset(0, radius),
+          ),
         );
       case DefaultUnistrokeNames.triangle:
       case DefaultUnistrokeNames.star:
-        final polygon = shape.convertToCanonicalPolygon();
+        final polygon = [...shape.convertToCanonicalPolygon()];
         log.info('Detected ${shape.name}');
-        return outlineStroke(rawStroke, polygon);
+        // Without the last corner if it's the first again.
+        if (polygon.length > 1 && polygon.first == polygon.last) {
+          polygon.removeLast();
+        }
+        return shapeStroke(rawStroke, PathShape.polygon(polygon));
     }
   }
 
-  /// A circle drawn along its outline has at least this many points, so
-  /// a small one stays round.
-  static const _minCirclePoints = 16;
-
-  /// Points around a circle, about [strokeSize] apart like a drawn circle's,
-  /// ending where they start.
-  static List<Offset> circleOutline(
-    Offset center,
-    double radius,
-    double strokeSize,
-  ) {
-    final count = max(_minCirclePoints, (2 * pi * radius / strokeSize).ceil());
-    return [
-      for (var i = 0; i <= count; i++)
-        center + Offset.fromDirection(2 * pi * i / count, radius),
-    ];
-  }
-
-  /// A stroke through [outline], like [rawStroke] (with its line style),
-  /// but without tapers or streamlining, which would round its corners.
-  static Stroke outlineStroke(Stroke rawStroke, List<Offset> outline) {
-    final StrokeOptions(:start, :end) = rawStroke.options;
-    final options = rawStroke.options.copyWith(
-      streamline: 0,
-      // Copies: the ends are shared with the pen's options.
-      start: start.copyWith(
-        taperEnabled: false,
-        customTaper: start.customTaper,
-      ),
-      end: end.copyWith(taperEnabled: false, customTaper: end.customTaper),
-    );
-    return Stroke(
-      color: rawStroke.color,
-      pressureEnabled: rawStroke.pressureEnabled,
-      options: options,
-      pageIndex: rawStroke.pageIndex,
-      page: rawStroke.page,
-      toolId: rawStroke.toolId,
-      lineStyle: rawStroke.lineStyle,
-      isTape: rawStroke.isTape,
-    )..addPoints(outline);
-  }
+  /// A stroke along [shape], like [stroke] (its colour, options, tool, line
+  /// style and tape), e.g. [stroke] reshaped.
+  static Stroke shapeStroke(Stroke stroke, StrokeShape shape) => Stroke(
+    color: stroke.color,
+    pressureEnabled: stroke.pressureEnabled,
+    options: stroke.options.copyWith(),
+    pageIndex: stroke.pageIndex,
+    page: stroke.page,
+    toolId: stroke.toolId,
+    lineStyle: stroke.lineStyle,
+    isTape: stroke.isTape,
+  )..setShape(shape);
 
   /// The default stroke options.
   ///

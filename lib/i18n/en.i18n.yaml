@@ -415,6 +415,10 @@ editor:
     delete: Delete
     duplicate: Duplicate
     thickness: Thickness
+  shapes:
+    corner: Corner
+    smooth: Smooth
+    deletePoint: Delete point
   menu:
     clearPage: Clear page $page/$totalPages
     clearAllPages: Clear all pages

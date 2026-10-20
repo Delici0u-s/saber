@@ -9,8 +9,10 @@ import 'package:saber/components/canvas/_circle_stroke.dart';
 import 'package:saber/components/canvas/_rectangle_stroke.dart';
 import 'package:saber/components/canvas/_stroke.dart';
 import 'package:saber/components/canvas/select_result.dart';
+import 'package:saber/components/canvas/stroke_shape.dart';
 import 'package:saber/data/editor/page.dart';
 import 'package:saber/data/editor/selection_transform.dart';
+import 'package:saber/data/editor/shape_handles.dart';
 import 'package:saber/data/extensions/color_extensions.dart';
 import 'package:saber/data/tools/highlighter.dart';
 import 'package:saber/data/tools/laser_pointer.dart';
@@ -433,6 +435,8 @@ class CanvasPainter extends CustomPainter {
       canvas.drawCircle(center, radius, line);
     }
 
+    _drawShapeHandles(canvas, line, background);
+
     // The angle, beside the rotate handle, while rotating.
     final rotation = box.transform.rotation;
     if (rotation == 0) return;
@@ -451,6 +455,39 @@ class CanvasPainter extends CustomPainter {
       box.handlePosition(.rotate) +
           Offset(SelectionBox.grabRadius * pixel, -label.height / 2),
     );
+  }
+
+  /// The handles on a selected shape (see [ShapeHandles]): a square on a
+  /// corner, a filled circle on a smooth anchor, a small circle in the
+  /// middle of a side.
+  void _drawShapeHandles(Canvas canvas, Paint line, Paint background) {
+    final shape = currentSelection?.shape;
+    if (shape == null) return;
+    final pixel = 1 / screenScale;
+    final fill = Paint()..color = primaryColor;
+    for (final (handle, center) in ShapeHandles(
+      shape: shape,
+      pixel: pixel,
+    ).handles) {
+      if (handle.middle) {
+        final radius = ShapeHandles.middleRadius * pixel;
+        canvas.drawCircle(center, radius, background);
+        canvas.drawCircle(center, radius, line);
+        continue;
+      }
+      final radius = ShapeHandles.anchorRadius * pixel;
+      final smooth = switch (shape) {
+        PathShape(:final points) => points[handle.index].smooth,
+        EllipseShape() => true,
+      };
+      if (smooth) {
+        canvas.drawCircle(center, radius, fill);
+      } else {
+        final square = Rect.fromCircle(center: center, radius: radius);
+        canvas.drawRect(square, background);
+        canvas.drawRect(square, line);
+      }
+    }
   }
 
   /// Dash length and line width of the eraser outline and the selection

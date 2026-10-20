@@ -328,6 +328,7 @@ class Translations$editor$en {
 	late final Translations$editor$colors$en colors = Translations$editor$colors$en.internal(_root);
 	late final Translations$editor$imageOptions$en imageOptions = Translations$editor$imageOptions$en.internal(_root);
 	late final Translations$editor$selectionBar$en selectionBar = Translations$editor$selectionBar$en.internal(_root);
+	late final Translations$editor$shapes$en shapes = Translations$editor$shapes$en.internal(_root);
 	late final Translations$editor$menu$en menu = Translations$editor$menu$en.internal(_root);
 	late final Translations$editor$photoPdfError$en photoPdfError = Translations$editor$photoPdfError$en.internal(_root);
 	late final Translations$editor$readOnlyBanner$en readOnlyBanner = Translations$editor$readOnlyBanner$en.internal(_root);
@@ -1533,6 +1534,24 @@ class Translations$editor$selectionBar$en {
 
 	/// en: 'Thickness'
 	String get thickness => 'Thickness';
+}
+
+// Path: editor.shapes
+class Translations$editor$shapes$en {
+	Translations$editor$shapes$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Corner'
+	String get corner => 'Corner';
+
+	/// en: 'Smooth'
+	String get smooth => 'Smooth';
+
+	/// en: 'Delete point'
+	String get deletePoint => 'Delete point';
 }
 
 // Path: editor.menu

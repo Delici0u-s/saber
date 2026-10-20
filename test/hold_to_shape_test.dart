@@ -2,8 +2,8 @@ import 'dart:math';
 
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:saber/components/canvas/_circle_stroke.dart';
 import 'package:saber/components/canvas/_stroke.dart';
+import 'package:saber/components/canvas/stroke_shape.dart';
 import 'package:saber/data/editor/page.dart';
 import 'package:saber/data/flavor_config.dart';
 import 'package:saber/data/prefs.dart';
@@ -50,7 +50,7 @@ void main() {
         _circle(),
         afterDrawing: (async) => async.elapse(delay * 2),
       );
-      expect(stroke, isA<CircleStroke>());
+      expect(stroke?.shape, isA<EllipseShape>());
     });
 
     test('a styled shape keeps its style, without changing the pen', () {
@@ -80,7 +80,7 @@ void main() {
         _circle(),
         afterDrawing: (async) => async.elapse(delay ~/ 2),
       );
-      expect(stroke, isNot(isA<CircleStroke>()));
+      expect(stroke?.shape, isNull);
     });
 
     test('jitter within the stroke width still counts as holding', () {
@@ -97,7 +97,7 @@ void main() {
           async.elapse(delay ~/ 4);
         },
       );
-      expect(stroke, isA<CircleStroke>());
+      expect(stroke?.shape, isA<EllipseShape>());
     });
 
     test('moving on after a shape was recognized cancels it', () {
@@ -112,7 +112,7 @@ void main() {
           expect(Pen.detectedShape, isNull);
         },
       );
-      expect(stroke, isNot(isA<CircleStroke>()));
+      expect(stroke?.shape, isNull);
     });
 
     test('does nothing when disabled', () {
@@ -122,13 +122,13 @@ void main() {
         _circle(),
         afterDrawing: (async) => async.elapse(const Duration(hours: 1)),
       );
-      expect(stroke, isNot(isA<CircleStroke>()));
+      expect(stroke?.shape, isNull);
     });
   });
 
   test('the shape pen still turns a circle into a shape on release', () {
     stows.holdToShapeDelay.value = -1;
     final stroke = draw(ShapePen(), _circle(), afterDrawing: (_) {});
-    expect(stroke, isA<CircleStroke>());
+    expect(stroke?.shape, isA<EllipseShape>());
   });
 }

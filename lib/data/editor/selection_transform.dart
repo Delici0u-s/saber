@@ -3,11 +3,10 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:perfect_freehand/perfect_freehand.dart';
-import 'package:saber/components/canvas/_circle_stroke.dart';
-import 'package:saber/components/canvas/_rectangle_stroke.dart';
 import 'package:saber/components/canvas/_stroke.dart';
 import 'package:saber/components/canvas/image/editor_image.dart';
 import 'package:saber/components/canvas/ruler.dart';
+import 'package:saber/components/canvas/stroke_shape.dart';
 import 'package:saber/data/tools/pen.dart';
 
 /// The handles on a [SelectionBox].
@@ -236,36 +235,11 @@ class SelectionTransform {
   }
 
   /// A copy of [stroke] moved by this transform, with its width scaled.
-  /// Rectangles stay rectangles unless rotated, and circles stay circles
-  /// unless stretched; otherwise they become strokes along their outline.
+  /// A shape (see [StrokeShape.of]) stays one.
   Stroke apply(Stroke stroke) {
-    final transformed = switch (stroke) {
-      RectangleStroke(:final rect) when rotation == 0 =>
-        stroke.copy()
-          ..rect = Rect.fromPoints(map(rect.topLeft), map(rect.bottomRight)),
-      RectangleStroke(:final rect) => Pen.outlineStroke(stroke, [
-        for (final corner in [
-          rect.topLeft,
-          rect.topRight,
-          rect.bottomRight,
-          rect.bottomLeft,
-          rect.topLeft,
-        ])
-          map(corner),
-      ]),
-      CircleStroke(:final center, :final radius) when scaleX == scaleY =>
-        stroke.copy()
-          ..center = map(center)
-          ..radius = radius * scaleX,
-      CircleStroke(:final center, :final radius) => Pen.outlineStroke(stroke, [
-        for (final point in Pen.circleOutline(
-          center,
-          radius,
-          stroke.options.size,
-        ))
-          map(point),
-      ]),
-      _ =>
+    final transformed = switch (StrokeShape.of(stroke)) {
+      final shape? => Pen.shapeStroke(stroke, shape.map(map)),
+      null =>
         stroke.copy()..replacePoints([
           for (final point in stroke.pointVectors)
             PointVector.fromOffset(
