@@ -10,6 +10,7 @@ import 'package:saber/components/canvas/_rectangle_stroke.dart';
 import 'package:saber/components/canvas/_stroke.dart';
 import 'package:saber/components/canvas/select_result.dart';
 import 'package:saber/data/editor/page.dart';
+import 'package:saber/data/editor/selection_transform.dart';
 import 'package:saber/data/extensions/color_extensions.dart';
 import 'package:saber/data/tools/highlighter.dart';
 import 'package:saber/data/tools/laser_pointer.dart';
@@ -29,8 +30,9 @@ class CanvasPainter extends CustomPainter {
     required this.pageIndex,
     required this.totalPages,
     required this.currentScale,
+    double? screenScale,
     required this.defaultTextStyle,
-  });
+  }) : screenScale = screenScale ?? currentScale;
 
   final bool invert;
   final List<Stroke> strokes;
@@ -42,7 +44,14 @@ class CanvasPainter extends CustomPainter {
   final bool showPageIndicator;
   final int pageIndex;
   final int totalPages;
+
+  /// The zoom level, e.g. for the level of detail of strokes.
   final double currentScale;
+
+  /// How many screen pixels a page unit takes up (the zoom times how much
+  /// the page is scaled to fit), for things sized on screen, like the
+  /// eraser outline and the selection box.
+  final double screenScale;
   final TextStyle defaultTextStyle;
 
   @override
@@ -51,6 +60,7 @@ class CanvasPainter extends CustomPainter {
 
     _drawHighlighterStrokes(canvas, canvasRect);
     _drawNonHighlighterStrokes(canvas);
+    _drawTapes(canvas);
     for (final stroke in laserStrokes) _drawLaserStroke(canvas, stroke);
     _drawCurrentStroke(canvas);
     _drawDetectedShape(canvas);
@@ -75,7 +85,8 @@ class CanvasPainter extends CustomPainter {
         showPageIndicator != oldDelegate.showPageIndicator ||
         pageIndex != oldDelegate.pageIndex ||
         totalPages != oldDelegate.totalPages ||
-        currentScale != oldDelegate.currentScale;
+        currentScale != oldDelegate.currentScale ||
+        screenScale != oldDelegate.screenScale;
   }
 
   void _drawHighlighterStrokes(Canvas canvas, Rect canvasRect) {
@@ -110,6 +121,7 @@ class CanvasPainter extends CustomPainter {
 
     for (final stroke in strokes) {
       if (stroke.toolId == .highlighter) continue;
+      if (stroke.isTape) continue; // on top, see [_drawTapes]
 
       var color = stroke.color.withInversion(invert);
       if (currentSelection?.strokes.contains(stroke) ?? false) {
@@ -121,7 +133,8 @@ class CanvasPainter extends CustomPainter {
       paint.maskFilter = null;
       if (stroke.toolId == .pencil) {
         if (shouldUsePencilShader(stroke.options.size)) {
-          paint.color = Colors.white;
+          // With a shader, only the colour's opacity counts.
+          paint.color = Colors.white.withValues(alpha: color.a);
           paint.shader = page.pencilShader
             ..setFloat(0, color.r)
             ..setFloat(1, color.g)
@@ -130,7 +143,11 @@ class CanvasPainter extends CustomPainter {
         } else {
           // Fast imitation of pencil when zoomed out
           final background = invert ? Colors.black : Colors.white;
-          paint.color = Color.lerp(background, color, 0.6)!;
+          paint.color = Color.lerp(
+            background,
+            color.withValues(alpha: 1),
+            0.6,
+          )!.withValues(alpha: color.a);
         }
       }
 
@@ -153,6 +170,71 @@ class CanvasPainter extends CustomPainter {
     }
   }
 
+  /// How much darker tape's stripes are than the tape, and how much of its
+  /// colour tints revealed tape.
+  static const _tapeStripeDarkness = 0.12, _revealedTapeAlpha = 0.15;
+
+  /// Tape, above everything else (see [paintTape]).
+  void _drawTapes(Canvas canvas) {
+    for (final stroke in strokes) {
+      if (!stroke.isTape) continue;
+      paintTape(
+        canvas,
+        _selectPath(stroke),
+        color: stroke.color.withInversion(invert),
+        width: stroke.options.size,
+        revealed: stroke.tapeRevealed,
+        outlineWidth: _outlineWidth / screenScale,
+      );
+    }
+  }
+
+  /// Paints tape of [width] filling [path]: opaque [color] with faint
+  /// diagonal stripes, or, [revealed] (see [Stroke.tapeRevealed]), a tint
+  /// with an outline [outlineWidth] wide.
+  static void paintTape(
+    Canvas canvas,
+    Path path, {
+    required Color color,
+    required double width,
+    bool revealed = false,
+    required double outlineWidth,
+  }) {
+    if (revealed) {
+      canvas.drawPath(
+        path,
+        Paint()..color = color.withValues(alpha: _revealedTapeAlpha),
+      );
+      // Merged first, so the outline doesn't show where the strip's rounded
+      // ends overlap it.
+      canvas.drawPath(
+        Path.combine(.union, path, Path()),
+        Paint()
+          ..color = color
+          ..style = .stroke
+          ..strokeWidth = outlineWidth,
+      );
+      return;
+    }
+
+    canvas.drawPath(path, Paint()..color = color.withValues(alpha: 1));
+    // Stripes a strip's width apart.
+    final bounds = path.getBounds();
+    final stripe = Paint()
+      ..color = Color.lerp(color, Colors.black, _tapeStripeDarkness)!
+      ..strokeWidth = width / 4;
+    canvas.save();
+    canvas.clipPath(path);
+    for (var x = bounds.left - bounds.height; x < bounds.right; x += width) {
+      canvas.drawLine(
+        Offset(x, bounds.bottom),
+        Offset(x + bounds.height, bounds.top),
+        stripe,
+      );
+    }
+    canvas.restore();
+  }
+
   void _drawCurrentStroke(Canvas canvas) {
     if (currentStroke == null) return;
 
@@ -167,7 +249,8 @@ class CanvasPainter extends CustomPainter {
     paint.shader = null;
     paint.maskFilter = null;
     if (currentStroke!.toolId == .pencil) {
-      paint.color = Colors.white;
+      // With a shader, only the colour's opacity counts.
+      paint.color = Colors.white.withValues(alpha: color.a);
       paint.shader = page.pencilShader
         ..setFloat(0, color.r)
         ..setFloat(1, color.g)
@@ -176,6 +259,16 @@ class CanvasPainter extends CustomPainter {
     }
 
     // Current stroke always uses high quality
+    if (currentStroke!.isTape) {
+      // Looking like tape while it's drawn.
+      return paintTape(
+        canvas,
+        currentStroke!.highQualityPath,
+        color: color,
+        width: currentStroke!.options.size,
+        outlineWidth: _outlineWidth / screenScale,
+      );
+    }
     canvas.drawPath(currentStroke!.highQualityPath, paint);
   }
 
@@ -197,10 +290,19 @@ class CanvasPainter extends CustomPainter {
     if (shape == null) return;
 
     final color = currentStroke?.color.withInversion(invert) ?? Colors.black;
+    final size = currentStroke?.options.size ?? 3;
     final shapePaint = Paint()
       ..color = Color.lerp(color, primaryColor, 0.5)!.withValues(alpha: 0.7)
       ..style = .stroke
-      ..strokeWidth = currentStroke?.options.size ?? 3;
+      ..strokeWidth = size
+      ..strokeCap = .round;
+    // In the stroke's line style, like the shape it becomes.
+    final pattern = [
+      for (final length in currentStroke?.lineStyle.pattern ?? const <double>[])
+        length * size,
+    ];
+    void drawPath(Path path) =>
+        canvas.drawPath(_inPattern(path, pattern), shapePaint);
 
     switch (shape.name) {
       case null:
@@ -215,27 +317,66 @@ class CanvasPainter extends CustomPainter {
               ? lastPoint
               : PointVector.fromOffset(offset: lastPoint),
         );
-        canvas.drawLine(firstPoint, lastPoint, shapePaint);
+        drawPath(
+          Path()
+            ..moveTo(firstPoint.dx, firstPoint.dy)
+            ..lineTo(lastPoint.dx, lastPoint.dy),
+        );
       case DefaultUnistrokeNames.rectangle:
         final rect = shape.convertToRect();
-        canvas.drawRect(rect, shapePaint);
+        drawPath(Path()..addRect(rect));
       case DefaultUnistrokeNames.circle:
         final (center, radius) = shape.convertToCircle();
-        canvas.drawCircle(center, radius, shapePaint);
+        drawPath(
+          Path()..addOval(Rect.fromCircle(center: center, radius: radius)),
+        );
       case DefaultUnistrokeNames.triangle:
       case DefaultUnistrokeNames.star:
         final polygon = shape.convertToCanonicalPolygon();
-        canvas.drawPath(Path()..addPolygon(polygon, true), shapePaint);
+        drawPath(Path()..addPolygon(polygon, true));
     }
   }
 
+  /// The parts of [path] that [pattern] draws (see [LineStyle.pattern], in
+  /// page units): all of it for an empty pattern. A drawn length of 0 is
+  /// a dot, given a round cap.
+  static Path _inPattern(Path path, List<double> pattern) {
+    if (pattern.isEmpty) return path;
+    final pieces = Path();
+    for (final metric in path.computeMetrics()) {
+      var distance = 0.0;
+      for (var i = 0; distance < metric.length; i++) {
+        final length = pattern[i % pattern.length];
+        if (i.isEven && length > 0) {
+          pieces.addPath(
+            metric.extractPath(distance, distance + length),
+            .zero,
+          );
+        } else if (i.isEven) {
+          // A zero-length line, which the round cap draws as a dot.
+          final dot = metric.getTangentForOffset(distance)!.position;
+          pieces
+            ..moveTo(dot.dx, dot.dy)
+            ..lineTo(dot.dx, dot.dy);
+        }
+        distance += length;
+      }
+    }
+    return pieces;
+  }
+
+  /// The fill of the area being selected or the selection box.
+  static const _selectionFillAlpha = 0.1;
+
   void _drawSelection(Canvas canvas) {
     if (currentSelection == null) return;
+    // Once selected, the box with handles takes over from the outline.
+    if (currentSelection!.box != null) return _drawSelectionBox(canvas);
 
     // draw translucent fill
     canvas.drawPath(
       currentSelection!.path,
-      Paint()..color = primaryColor.withValues(alpha: 0.1),
+      Paint()..color = primaryColor.withValues(alpha: _selectionFillAlpha),
     );
 
     // draw dashed stroke
@@ -251,15 +392,81 @@ class CanvasPainter extends CustomPainter {
     );
   }
 
-  /// Dash length and line width of the eraser outline, in screen pixels.
-  static const double _eraserOutlineDash = 4;
-  static const _eraserOutlineWidth = 1.5;
+  /// The box around the selection with its handles, see [SelectionBox].
+  void _drawSelectionBox(Canvas canvas) {
+    final box = currentSelection?.box?.copyWith(pixel: 1 / screenScale);
+    if (box == null) return;
+    final pixel = box.pixel;
+    final line = Paint()
+      ..color = primaryColor
+      ..style = .stroke
+      ..strokeWidth = _outlineWidth * pixel;
+
+    final dash = _outlineDash * pixel;
+    final outline = Path()..addPolygon(box.corners, true);
+    canvas.drawPath(
+      outline,
+      Paint()..color = primaryColor.withValues(alpha: _selectionFillAlpha),
+    );
+    canvas.drawPath(
+      dashPath(outline, dashArray: CircularIntervalList([dash, dash])),
+      line,
+    );
+    if (box.rotatable) {
+      canvas.drawLine(
+        box.handlePosition(.top),
+        box.handlePosition(.rotate),
+        line,
+      );
+    }
+
+    final background = Paint()..color = invert ? Colors.black : Colors.white;
+    final radius = SelectionBox.handleRadius * pixel;
+    for (final handle in box.handles) {
+      final center = box.handlePosition(handle);
+      // The rotate handle is filled, so it stands out from the others.
+      canvas.drawCircle(
+        center,
+        radius,
+        handle == .rotate ? (Paint()..color = primaryColor) : background,
+      );
+      canvas.drawCircle(center, radius, line);
+    }
+
+    // The angle, beside the rotate handle, while rotating.
+    final rotation = box.transform.rotation;
+    if (rotation == 0) return;
+    final label = TextPainter(
+      text: TextSpan(
+        text: '${(rotation * 180 / pi).round()}°',
+        style: TextStyle(
+          color: primaryColor,
+          fontSize: _angleLabelSize * pixel,
+        ),
+      ),
+      textDirection: .ltr,
+    )..layout();
+    label.paint(
+      canvas,
+      box.handlePosition(.rotate) +
+          Offset(SelectionBox.grabRadius * pixel, -label.height / 2),
+    );
+  }
+
+  /// Dash length and line width of the eraser outline and the selection
+  /// box, in screen pixels.
+  static const double _outlineDash = 4;
+  static const _outlineWidth = 1.5;
+
+  /// The size of the angle shown while rotating a selection, in screen
+  /// pixels.
+  static const _angleLabelSize = 14.0;
 
   void _drawEraserOutline(Canvas canvas) {
     final outline = page.eraserOutline;
     if (outline == null) return;
 
-    final dash = _eraserOutlineDash / currentScale;
+    final dash = _outlineDash / screenScale;
     canvas.drawPath(
       dashPath(
         Path()..addOval(
@@ -269,7 +476,7 @@ class CanvasPainter extends CustomPainter {
       ),
       Paint()
         ..color = primaryColor
-        ..strokeWidth = _eraserOutlineWidth / currentScale
+        ..strokeWidth = _outlineWidth / screenScale
         ..style = .stroke,
     );
   }

@@ -28,6 +28,8 @@ class EditorBottomSheet extends StatefulWidget {
     required this.redrawAndSave,
     required this.pickPhotos,
     required this.importPdf,
+    required this.openNoteSideBySide,
+    required this.openPdfSideBySide,
     required this.canRasterPdf,
     required this.getIsWatchingServer,
     required this.setIsWatchingServer,
@@ -46,6 +48,9 @@ class EditorBottomSheet extends StatefulWidget {
   final VoidCallback redrawAndSave;
   final Future<int> Function() pickPhotos;
   final Future<bool> Function() importPdf;
+
+  /// Open a note or PDF next to this note, see [SideBySide].
+  final Future<void> Function() openNoteSideBySide, openPdfSideBySide;
   final bool canRasterPdf;
   final bool Function() getIsWatchingServer;
   final void Function(bool) setIsWatchingServer;
@@ -335,6 +340,27 @@ class _EditorBottomSheetState extends State<EditorBottomSheet> {
                       }
                     },
                     child: const Text('PDF'),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              t.editor.sideBySide.title,
+              style: TextTheme.of(context).titleMedium,
+            ),
+            Wrap(
+              spacing: 8,
+              children: [
+                for (final (label, open) in [
+                  (t.editor.sideBySide.note, widget.openNoteSideBySide),
+                  (t.editor.sideBySide.pdf, widget.openPdfSideBySide),
+                ])
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      open();
+                    },
+                    child: Text(label),
                   ),
               ],
             ),

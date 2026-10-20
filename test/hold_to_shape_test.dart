@@ -7,6 +7,7 @@ import 'package:saber/components/canvas/_stroke.dart';
 import 'package:saber/data/editor/page.dart';
 import 'package:saber/data/flavor_config.dart';
 import 'package:saber/data/prefs.dart';
+import 'package:saber/data/tools/line_style.dart';
 import 'package:saber/data/tools/pen.dart';
 import 'package:saber/data/tools/shape_pen.dart';
 
@@ -50,6 +51,27 @@ void main() {
         afterDrawing: (async) => async.elapse(delay * 2),
       );
       expect(stroke, isA<CircleStroke>());
+    });
+
+    test('a styled shape keeps its style, without changing the pen', () {
+      final pen = Pen.fountainPen();
+      final previousStyle = pen.lineStyle;
+      addTearDown(() => pen.lineStyle = previousStyle);
+      pen.lineStyle = .dotted;
+      final taper = pen.options.start.taperEnabled;
+      final stroke = draw(
+        pen,
+        _circle(),
+        afterDrawing: (async) => async.elapse(delay * 2),
+      )!;
+      expect(stroke.lineStyle, LineStyle.dotted);
+      expect(stroke.isInPieces, isTrue);
+      expect(stroke.highQualityPieces.length, greaterThan(10));
+      // Still round: every point on the circle the drawing was close to.
+      for (final point in stroke.points) {
+        expect((point - const Offset(500, 500)).distance, closeTo(200, 20));
+      }
+      expect(pen.options.start.taperEnabled, taper);
     });
 
     test('releasing before the delay keeps the drawn stroke', () {

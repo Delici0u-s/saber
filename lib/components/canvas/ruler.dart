@@ -73,6 +73,62 @@ enum RulerUnit {
   static RulerUnit fromJson(Object? json) => values.asNameMap()[json] ?? .mm;
 }
 
+/// The units a [Ruler]'s angle and protractor show.
+///
+/// Saved by [name], so values can be reordered but not renamed.
+enum AngleUnit {
+  /// Degrees, with protractor labels every 10°.
+  degrees(groups: [5, 10]),
+
+  /// Radians, as fractions of π on the protractor (every π/12) and for
+  /// multiples of 15°, otherwise as decimals.
+  radians(groups: [5, 15]);
+
+  new({required this.groups});
+
+  /// Protractor marks are every degree, longer on multiples of these;
+  /// labels are on multiples of [groups].last degrees.
+  final List<int> groups;
+
+  /// [degrees] (a whole number) in this unit.
+  String format(int degrees) => switch (this) {
+    .degrees => '$degrees°',
+    .radians when degrees % _piFraction == 0 => _ofPi(degrees ~/ _piFraction),
+    .radians => (degrees * pi / 180).toStringAsFixed(2),
+  };
+
+  /// The widest of [format]'s results for angles below [limit] degrees.
+  Iterable<String> widestCandidates(int limit) => switch (this) {
+    .degrees => ['${limit - 1}°'],
+    .radians => [
+      format(limit - 1),
+      format((limit ~/ _piFraction - 1) * _piFraction),
+    ],
+  };
+
+  /// Radians are fractions of π in steps of 180° / [_piFraction].
+  static const _piFraction = 15, _piSteps = 180 ~/ _piFraction;
+
+  /// [steps] / [_piSteps] of π, reduced, e.g. "3π/4".
+  static String _ofPi(int steps) {
+    if (steps == 0) return '0';
+    final divisor = _gcd(steps.abs(), _piSteps);
+    final numerator = steps ~/ divisor, denominator = _piSteps ~/ divisor;
+    final top = switch (numerator) {
+      1 => 'π',
+      -1 => '-π',
+      _ => '$numeratorπ',
+    };
+    return denominator == 1 ? top : '$top/$denominator';
+  }
+
+  static int _gcd(int a, int b) => b == 0 ? a : _gcd(b, a % b);
+
+  /// The unit saved as [json] (its [name]), or [degrees] if unknown.
+  static AngleUnit fromJson(Object? json) =>
+      values.asNameMap()[json] ?? .degrees;
+}
+
 /// Sizes a [RulerOutline] is laid out with.
 typedef RulerDimensions = ({
   /// See [Stows.rulerSnapDistance].
@@ -108,6 +164,19 @@ typedef RulerScale = ({
   bool labeled,
 });
 
+/// A protractor on a [RulerOutline], in its coordinates: degrees are
+/// measured around [center] from the base's right towards [inward].
+typedef RulerProtractor = ({
+  /// The middle of its base, where the angles meet.
+  Offset center,
+
+  /// How far its marks and labels reach from [center].
+  double radius,
+
+  /// A unit vector from the base into the ruler, along its 90° line.
+  Offset inward,
+});
+
 /// The shape of a [Ruler] at a size, in its own coordinates: the rotation ring
 /// is at the origin and the ruler's angle is 0.
 @immutable
@@ -129,8 +198,8 @@ class RulerOutline {
 
   final List<RulerScale> scales;
 
-  /// The centre and radius of a protractor's degree marks, if any.
-  final ({Offset center, double radius})? protractor;
+  /// The ruler's protractor, if any.
+  final RulerProtractor? protractor;
 
   /// The width of a [RulerShape.ruler]: a grab area between two snap bands.
   static double barWidth(double snapDistance) =>
@@ -141,9 +210,10 @@ class RulerOutline {
   static const _bladeMm = 150.0, _stockMm = 100.0, _legWidthMm = 30.0;
 
   /// A [RulerShape.setSquare]'s long side, the reach of its scale either way
-  /// from the middle, and the margin between its protractor and short sides.
+  /// from the middle, and the margin between its protractor and short sides
+  /// (for the degree marks along them), as on Aristo's and mizi's.
   static const _setSquareMm = 160.0, _setSquareScaleMm = 70.0;
-  static const _protractorMarginMm = 3.0;
+  static const _protractorMarginMm = 6.0;
 
   factory of(RulerShape shape, RulerDimensions dimensions) {
     final (:snapDistance, :ringInner, :ringOuter, :pixelsPerMm, :overlay) =
@@ -219,20 +289,38 @@ class RulerOutline {
               to: stock,
               labeled: true,
             ),
+            // The inner sides, measured from the inner corner.
+            (
+              origin: at(width, width),
+              direction: const Offset(1, 0),
+              inward: const Offset(0, -1),
+              from: 0,
+              to: blade - width,
+              labeled: true,
+            ),
+            (
+              origin: at(width, width),
+              direction: const Offset(0, 1),
+              inward: const Offset(-1, 0),
+              from: 0,
+              to: stock - width,
+              labeled: true,
+            ),
           ],
         );
 
       case .setSquare:
-        // The long side on top with its middle above the ring (the ring
-        // keeps clear of the scale), and the right angle below.
+        // The long side at the bottom with its middle below the ring (the
+        // ring keeps clear of the scale), and the right angle on top.
         final length = _setSquareMm * pixelsPerMm;
-        final middle = Offset(0, -(ringOuter + snapDistance));
+        final middle = Offset(0, ringOuter + snapDistance);
         final scaleReach = _setSquareScaleMm * pixelsPerMm;
+        const up = Offset(0, -1);
         return RulerOutline(
           corners: [
-            middle + Offset(-length / 2, 0),
             middle + Offset(length / 2, 0),
-            middle + Offset(0, length / 2),
+            middle + Offset(-length / 2, 0),
+            middle + up * (length / 2),
           ],
           ringInner: ringInner,
           ringOuter: ringOuter,
@@ -240,7 +328,7 @@ class RulerOutline {
             (
               origin: middle,
               direction: const Offset(1, 0),
-              inward: const Offset(0, 1),
+              inward: up,
               from: -scaleReach,
               to: scaleReach,
               labeled: true,
@@ -252,6 +340,7 @@ class RulerOutline {
             radius:
                 (_setSquareMm / (2 * sqrt2) - _protractorMarginMm) *
                 pixelsPerMm,
+            inward: up,
           ),
         );
     }
@@ -260,9 +349,12 @@ class RulerOutline {
   /// The sides of the outline, clockwise.
   Iterable<RulerEdge> get sides sync* {
     for (var i = 0; i < corners.length; i++) {
+      final n = corners.length;
       yield RulerEdge(
         start: corners[i],
-        end: corners[(i + 1) % corners.length],
+        end: corners[(i + 1) % n],
+        before: corners[(i - 1) % n],
+        after: corners[(i + 2) % n],
       );
     }
   }
@@ -323,9 +415,13 @@ class RulerOutline {
 /// A side of a [RulerOutline], from [start] to [end] (clockwise around it).
 @immutable
 class RulerEdge {
-  const new({required this.start, required this.end});
+  const new({required this.start, required this.end, this.before, this.after});
 
   final Offset start, end;
+
+  /// The corners before [start] and after [end] around the outline, if any,
+  /// so [project] goes round them like a pen round a real ruler's corners.
+  final Offset? before, after;
 
   Offset get _direction => (end - start) / (end - start).distance;
 
@@ -342,10 +438,48 @@ class RulerEdge {
 
   double distanceTo(Offset point) => (point - closestPoint(point)).distance;
 
+  /// Where a ray from [origin] towards [direction] crosses the side, if it
+  /// does.
+  Offset? intersect(Offset origin, Offset direction) {
+    final side = end - start;
+    final denominator = _cross(direction, side);
+    if (denominator == 0) return null;
+    final toStart = start - origin;
+    final alongRay = _cross(toStart, side) / denominator;
+    final alongSide = _cross(toStart, direction) / denominator;
+    if (alongRay <= 0 || alongSide < 0 || alongSide > 1) return null;
+    return origin + direction * alongRay;
+  }
+
   /// [point] moved onto the side, then [gap] further away from the ruler
   /// (e.g. half a stroke's width, so the stroke touches the side).
-  Offset project(Offset point, {double gap = 0}) =>
-      closestPoint(point) + outward * gap;
+  ///
+  /// Like a pen against a real ruler, it goes round an outer corner on an
+  /// arc of radius [gap] (up to the next side), and stops before an inner
+  /// corner where it touches the next side too.
+  Offset project(Offset point, {double gap = 0}) {
+    final direction = _direction;
+    final length = (end - start).distance;
+    final startTurn = before == null ? 0.0 : _turn(start - before!, direction);
+    final endTurn = after == null ? 0.0 : _turn(direction, after! - end);
+    final from = startTurn < 0 ? gap * tan(-startTurn / 2) : 0.0;
+    final to = max(from, length - (endTurn < 0 ? gap * tan(-endTurn / 2) : 0));
+
+    final along = _dot(point - start, direction);
+    if (along > length && endTurn > 0) {
+      final round = _turn(outward, point - end).clamp(0.0, endTurn);
+      return end + Ruler.rotate(outward, round) * gap;
+    }
+    if (along < 0 && startTurn > 0) {
+      final round = _turn(outward, point - start).clamp(-startTurn, 0.0);
+      return start + Ruler.rotate(outward, round) * gap;
+    }
+    return start + direction * along.clamp(from, to) + outward * gap;
+  }
+
+  /// The angle from [a] to [b], clockwise on screen: positive where the
+  /// outline turns at an outer corner, negative at an inner one.
+  static double _turn(Offset a, Offset b) => atan2(_cross(a, b), _dot(a, b));
 
   @override
   bool operator ==(Object other) =>
@@ -355,6 +489,7 @@ class RulerEdge {
   int get hashCode => Object.hash(start, end);
 
   static double _dot(Offset a, Offset b) => a.dx * b.dx + a.dy * b.dy;
+  static double _cross(Offset a, Offset b) => a.dx * b.dy - a.dy * b.dx;
 }
 
 /// A straight edge over the canvas: pen strokes that reach one of its sides
@@ -363,12 +498,15 @@ class RulerEdge {
 /// It lives on the screen, not on a page: it stays put while scrolling and is
 /// never saved or exported. Shown by [RulerOverlay].
 class Ruler extends ChangeNotifier {
-  /// Rotating snaps to multiples of this angle when within [_snapTolerance].
+  /// Rotating snaps to multiples of this angle when within [_snapTolerance],
+  /// otherwise to whole multiples of [_fineAngle]. The tolerance is less
+  /// than [_fineAngle], so the angles next to a snap angle can be set too.
   static const _snapAngle = pi / 12;
-  static const _snapTolerance = pi / 90;
+  static const _snapTolerance = _fineAngle * 0.75;
+  static const _fineAngle = pi / 180;
 
   /// How far one scroll of the mouse wheel rotates the ruler.
-  static const _wheelStep = pi / 180;
+  static const _wheelStep = _fineAngle;
 
   bool get visible => _visible;
   var _visible = false;
@@ -387,6 +525,12 @@ class Ruler extends ChangeNotifier {
   RulerUnit get unit => .fromJson(stows.rulerUnit.value);
   set unit(RulerUnit unit) {
     stows.rulerUnit.value = unit.name;
+    notifyListeners();
+  }
+
+  AngleUnit get angleUnit => .fromJson(stows.rulerAngleUnit.value);
+  set angleUnit(AngleUnit angleUnit) {
+    stows.rulerAngleUnit.value = angleUnit.name;
     notifyListeners();
   }
 
@@ -418,15 +562,22 @@ class Ruler extends ChangeNotifier {
   static Offset _clamp(Offset point, Size size) =>
       Offset(point.dx.clamp(0, size.width), point.dy.clamp(0, size.height));
 
-  /// Rotates the ruler to [angle], snapping to nearby multiples of 15°
-  /// if [snap] is true.
+  /// Rotates the ruler to [angle], snapping it (see [snapAngle]) if [snap]
+  /// is true.
   void rotateTo(double angle, {bool snap = true}) {
-    if (snap) {
-      final snapped = (angle / _snapAngle).round() * _snapAngle;
-      if ((angle - snapped).abs() <= _snapTolerance) angle = snapped;
-    }
+    if (snap) angle = snapAngle(angle);
     _angle = angle;
     notifyListeners();
+  }
+
+  /// [angle] (in radians) moved to a nearby multiple of 15°, or else to
+  /// whole degrees: how the ruler (and other things rotated by hand, e.g. a
+  /// selection) snap.
+  static double snapAngle(double angle) {
+    final snapped = (angle / _snapAngle).round() * _snapAngle;
+    return (angle - snapped).abs() <= _snapTolerance
+        ? snapped
+        : (angle / _fineAngle).round() * _fineAngle;
   }
 
   /// Rotates the ruler one step per mouse wheel scroll, [down] clockwise.
@@ -547,6 +698,7 @@ class _RulerOverlayState extends State<RulerOverlay> {
         stows.rulerSnapDistance,
         stows.rulerMarkSpacingMm,
         stows.rulerUnit,
+        stows.rulerAngleUnit,
       ]),
       builder: (context, _) {
         if (!ruler.visible) return const SizedBox.shrink();
@@ -559,10 +711,10 @@ class _RulerOverlayState extends State<RulerOverlay> {
             final size = constraints.biggest;
             final snapDistance = stows.rulerSnapDistance.value;
             final pixelsPerMm = widget.pixelsPerMm();
-            final angleLabel = _layOutText(
-              '${(ruler.shape.symmetry * 180 / pi).round() - 1}°',
-              textStyle,
-            );
+            final angleLabel = ruler.angleUnit
+                .widestCandidates((ruler.shape.symmetry * 180 / pi).round())
+                .map((text) => _layOutText(text, textStyle))
+                .reduce((a, b) => a.width >= b.width ? a : b);
             final ringInner =
                 Offset(angleLabel.width, angleLabel.height).distance / 2 +
                 RulerOverlay._ringPadding;
@@ -620,20 +772,25 @@ class _RulerOverlayState extends State<RulerOverlay> {
                   }
                 },
                 onScaleEnd: (_) => _ringDirectionAtStart = null,
-                child: CustomPaint(
-                  key: ruler.overlayKey,
-                  size: size,
-                  painter: _RulerPainter(
-                    outline: outline,
-                    center: ruler.centerIn(size),
-                    angle: ruler.angle,
-                    degrees: ruler.displayedDegrees,
-                    snapDistance: snapDistance,
-                    pixelsPerMm: pixelsPerMm,
-                    unit: ruler.unit,
-                    markMm: ruler.unit.markMm,
-                    colorScheme: colorScheme,
-                    textStyle: textStyle,
+                // The ruler reaches past the overlay, which mustn't cover the
+                // toolbar or app bar next to it.
+                child: ClipRect(
+                  child: CustomPaint(
+                    key: ruler.overlayKey,
+                    size: size,
+                    painter: _RulerPainter(
+                      outline: outline,
+                      center: ruler.centerIn(size),
+                      angle: ruler.angle,
+                      degrees: ruler.displayedDegrees,
+                      angleUnit: ruler.angleUnit,
+                      snapDistance: snapDistance,
+                      pixelsPerMm: pixelsPerMm,
+                      unit: ruler.unit,
+                      markMm: ruler.unit.markMm,
+                      colorScheme: colorScheme,
+                      textStyle: textStyle,
+                    ),
                   ),
                 ),
               ),
@@ -651,11 +808,12 @@ TextPainter _layOutText(String text, TextStyle style) => TextPainter(
 )..layout();
 
 class _RulerPainter extends CustomPainter {
-  const new({
+  new({
     required this.outline,
     required this.center,
     required this.angle,
     required this.degrees,
+    required this.angleUnit,
     required this.snapDistance,
     required this.pixelsPerMm,
     required this.unit,
@@ -668,6 +826,7 @@ class _RulerPainter extends CustomPainter {
   final Offset center;
   final double angle;
   final int degrees;
+  final AngleUnit angleUnit;
   final double snapDistance;
   final double pixelsPerMm;
   final RulerUnit unit;
@@ -699,11 +858,16 @@ class _RulerPainter extends CustomPainter {
   /// Space between labels, as a fraction of the widest label's height.
   static const _labelGap = 0.5;
 
-  /// The protractor's labels are this many degrees apart, or a multiple.
-  static const _degreesPerLabel = 10;
+  /// Protractor marks every degree, longer on multiples of the angle unit's
+  /// groups; labels on multiples of the last.
+  List<int> get _degreeGroups => angleUnit.groups;
 
-  /// Protractor marks every degree, longer every 5° and every 10°.
-  static const _degreeGroups = [5, 10];
+  /// A Geodreieck's lines parallel to its long side are at least this far
+  /// apart (in logical pixels).
+  static const _minParallelGap = 12.0;
+
+  /// The length of the dashes in dashed lines, and of the gaps between them.
+  static const _dash = 4.0;
 
   Paint get _markPaint => Paint()
     ..color = colorScheme.onSurfaceVariant
@@ -739,11 +903,11 @@ class _RulerPainter extends CustomPainter {
       size.bottomLeft(.zero),
       size.bottomRight(.zero),
     ].map((corner) => Ruler.rotate(corner - center, -angle)).toList();
-    for (final scale in outline.scales) {
-      _paintScale(canvas, scale, screen);
+    for (final (index, scale) in outline.scales.indexed) {
+      _paintScale(canvas, index, scale, screen);
     }
     if (outline.protractor case final protractor?) {
-      _paintProtractor(canvas, protractor);
+      _paintProtractor(canvas, protractor, screen);
     }
     _paintRing(canvas);
 
@@ -759,24 +923,30 @@ class _RulerPainter extends CustomPainter {
   static int _tier(int index, List<int> groups) =>
       groups.lastIndexWhere((group) => index % group == 0) + 1;
 
-  /// The smallest step through the marks (1, a group, or a multiple of the
-  /// largest group) that keeps marks at least [_minMarkGap] apart.
-  static int _step(double markGap, List<int> groups) {
-    for (final step in [1, ...groups]) {
-      if (step * markGap >= _minMarkGap) return step;
+  /// The smallest of [steps] (or a multiple of the last) that keeps lines
+  /// [gap] apart for each step at least [minGap] apart.
+  static int _step(double gap, List<int> steps, {double minGap = _minMarkGap}) {
+    for (final step in steps) {
+      if (step * gap >= minGap) return step;
     }
-    var step = groups.last;
-    while (step * markGap < _minMarkGap) {
+    var step = steps.last;
+    while (step * gap < minGap) {
       step *= 2;
     }
     return step;
   }
 
-  void _paintScale(Canvas canvas, RulerScale scale, List<Offset> screen) {
+  /// Draws the marks and labels of [scale], the [index]th of the outline's.
+  void _paintScale(
+    Canvas canvas,
+    int index,
+    RulerScale scale,
+    List<Offset> screen,
+  ) {
     final markGap = markMm * pixelsPerMm;
     if (!(markGap > 0)) return;
     final groups = unit.groups;
-    final step = _step(markGap, groups);
+    final step = _step(markGap, [1, ...groups]);
 
     final alongScreen = screen.map(
       (corner) => _dot(corner - scale.origin, scale.direction),
@@ -803,13 +973,10 @@ class _RulerPainter extends CustomPainter {
       final length = _markLength(_tier(i, groups), groups);
       canvas.drawLine(point, point + scale.inward * length, paint);
 
-      if (!scale.labeled || i == 0 || i % labelEvery != 0) continue;
+      if (!scale.labeled || i % labelEvery != 0) continue;
       final label = _layOutText(unit.label(i), textStyle);
-      final depth = _longMark + _labelGap * label.height + label.height / 2;
-      final labelCenter = point + scale.inward * depth;
-      if (!_hasRoomForLabel(labelCenter, label, (i * markGap).abs() - depth)) {
-        continue;
-      }
+      final labelCenter = point + scale.inward * _labelDepth(scale, label);
+      if (!_hasRoomForLabel(labelCenter, label, index)) continue;
       label.paint(
         canvas,
         labelCenter - Offset(label.width / 2, label.height / 2),
@@ -817,99 +984,442 @@ class _RulerPainter extends CustomPainter {
     }
   }
 
-  /// Half the diagonal of [label] plus a gap: how far its centre has to be
-  /// from anything it shouldn't touch.
-  static double _clearance(TextPainter label) =>
-      Offset(label.width, label.height).distance / 2 + _labelGap * label.height;
+  /// Half the size of [label] along [direction], a unit vector, plus a gap:
+  /// how far its centre has to be from a line across [direction] not to
+  /// touch it. [rotation] is how far the label is turned from upright in the
+  /// ruler, clockwise.
+  static double _extent(
+    TextPainter label,
+    Offset direction, {
+    double rotation = 0,
+  }) {
+    final local = Ruler.rotate(direction, -rotation);
+    return (local.dx.abs() * label.width + local.dy.abs() * label.height) / 2 +
+        _minMarkGap;
+  }
 
-  /// Whether [label], centred at [center], keeps clear of the ring, the
-  /// protractor's marks and the outline's sides, and of a scale starting at a
-  /// corner [fromZero] away (e.g. a [RulerShape.trySquare]'s other scale).
-  bool _hasRoomForLabel(Offset center, TextPainter label, double fromZero) {
-    final clearance = _clearance(label);
-    if (fromZero < clearance) return false;
-    if (center.distance < outline.ringOuter + clearance) return false;
+  /// How far into the ruler from [scale]'s side its [label]'s centre goes:
+  /// just past its longest marks.
+  static double _labelDepth(RulerScale scale, TextPainter label) =>
+      _longMark + _extent(label, scale.inward);
+
+  /// Whether [label], centred at [center] and turned by [rotation], keeps
+  /// [reach] away from [segment].
+  static bool _clearOfSegment(
+    RulerEdge segment,
+    Offset center,
+    TextPainter label,
+    double reach, {
+    double rotation = 0,
+  }) {
+    final away = center - segment.closestPoint(center);
+    final distance = away.distance;
+    return distance > 0 &&
+        distance >= reach + _extent(label, away / distance, rotation: rotation);
+  }
+
+  /// Whether [label], centred at [center], is wholly inside or outside the
+  /// band between radii [inner] and [outer] around [middle].
+  static bool _clearOfBand(
+    Offset middle,
+    double inner,
+    double outer,
+    Offset center,
+    TextPainter label, {
+    double rotation = 0,
+  }) {
+    final away = center - middle;
+    final distance = away.distance;
+    if (distance == 0) {
+      return inner > _extent(label, const Offset(1, 0), rotation: rotation);
+    }
+    final extent = _extent(label, away / distance, rotation: rotation);
+    return distance + extent <= inner || distance - extent >= outer;
+  }
+
+  /// Whether [label] of the [scale]th scale (counting the outline's first,
+  /// then any inside the protractor), centred at [center], keeps clear of
+  /// the ring, the protractor's marks, the outline's sides, the marks of the
+  /// outline's other scales and the labels of the scales before it (so the
+  /// first scales keep theirs where two meet).
+  bool _hasRoomForLabel(Offset center, TextPainter label, int scale) {
+    if (!_clearOfRingAndSides(center, label)) return false;
     if (outline.protractor case final protractor?) {
-      final distance = (center - protractor.center).distance;
-      if (distance > protractor.radius - _longMark - clearance &&
-          distance < protractor.radius + clearance) {
+      final marks = _protractorLayout!.marks;
+      if (!_clearOfBand(
+        protractor.center,
+        marks - _longMark,
+        marks,
+        center,
+        label,
+      )) {
         return false;
       }
     }
-    return outline.sides.every((side) => side.distanceTo(center) >= clearance);
+    return _clearOfScales(center, label, outline.scales.take(scale)) &&
+        _clearOfScales(
+          center,
+          label,
+          outline.scales.skip(scale + 1),
+          theirLabels: false,
+        );
   }
 
-  /// Draws degree marks around [protractor] and two rows of labels inside
-  /// them: 0° to 180° counterclockwise from the right outside, the other
-  /// way round inside, like on a Geodreieck.
+  /// Whether [label] centred at [center] keeps clear of the ring and the
+  /// outline's sides.
+  bool _clearOfRingAndSides(
+    Offset center,
+    TextPainter label, {
+    double rotation = 0,
+  }) =>
+      _clearOfBand(
+        .zero,
+        0,
+        outline.ringOuter,
+        center,
+        label,
+        rotation: rotation,
+      ) &&
+      outline.sides.every(
+        (side) => _clearOfSegment(side, center, label, 0, rotation: rotation),
+      );
+
+  /// Whether [label] centred at [center] keeps clear of the marks of
+  /// [scales], and of their labels if [theirLabels].
+  bool _clearOfScales(
+    Offset center,
+    TextPainter label,
+    Iterable<RulerScale> scales, {
+    bool theirLabels = true,
+    double rotation = 0,
+  }) => scales.every(
+    (scale) => _clearOfSegment(
+      _sideOf(scale),
+      center,
+      label,
+      _reach(scale, label, withLabels: theirLabels),
+      rotation: rotation,
+    ),
+  );
+
+  /// The part of the side [scale] runs along that has marks.
+  static RulerEdge _sideOf(RulerScale scale) => RulerEdge(
+    start: scale.origin + scale.direction * scale.from,
+    end: scale.origin + scale.direction * scale.to,
+  );
+
+  /// How far into the ruler the marks of [scale] reach, and its labels (if
+  /// sized like [label]) if [withLabels].
+  static double _reach(
+    RulerScale scale,
+    TextPainter label, {
+    bool withLabels = true,
+  }) => withLabels && scale.labeled
+      ? _labelDepth(scale, label) + _extent(label, scale.inward)
+      : _longMark;
+
+  /// Where the protractor's parts are, as radii from its centre, like on a
+  /// Geodreieck: two rows of labels just inside its radius, then its marks
+  /// (reaching in from [marks]), then [inside], the area within them.
+  late final ({
+    TextPainter widest,
+    double rowWidth,
+    double outerRow,
+    double innerRow,
+    double marks,
+    double inside,
+  })?
+  _protractorLayout = switch (outline.protractor) {
+    null => null,
+    (:final radius, center: _, inward: _) => () {
+      final widest = [
+        for (var degree = 0; degree <= 180; degree += _degreeGroups.last)
+          _layOutText(_protractorLabel(degree), textStyle),
+      ].reduce((a, b) => a.width >= b.width ? a : b);
+      // Labels follow the arc, so a row is a label's height deep.
+      final rowWidth = widest.height + 2 * _minMarkGap;
+      final outerRow = radius - rowWidth / 2;
+      final innerRow = outerRow - rowWidth;
+      final marks = innerRow - rowWidth / 2;
+      return (
+        widest: widest,
+        rowWidth: rowWidth,
+        outerRow: outerRow,
+        innerRow: innerRow,
+        marks: marks,
+        inside: marks - _longMark - _minMarkGap,
+      );
+    }(),
+  };
+
+  /// Draws [protractor] like on a Geodreieck: two rows of labels, 0° to 180°
+  /// counterclockwise from the right outside and the other way round inside,
+  /// with the degree marks inside them; lines from the labels out to the
+  /// sides and degree marks along them; the perpendicular through its centre;
+  /// and inside it, lines parallel to its base with scales to measure them
+  /// and lines at 45°.
   void _paintProtractor(
     Canvas canvas,
-    ({Offset center, double radius}) protractor,
+    RulerProtractor protractor,
+    List<Offset> screen,
   ) {
-    final (:center, :radius) = protractor;
-    final step = _step(radius * pi / 180, _degreeGroups);
+    final (:center, :radius, :inward) = protractor;
+    final layout = _protractorLayout!;
+    final groups = _degreeGroups;
     final paint = _markPaint;
 
-    // The perpendicular through the centre, for right angles.
-    canvas.drawLine(center, center + Offset(0, radius), paint);
+    _paintInside(canvas, protractor, screen);
 
+    // The perpendicular through the centre, for right angles, broken where
+    // it crosses the rows of labels.
+    if (_toOutline(center, inward) case final end?) {
+      canvas.save();
+      canvas.clipPath(
+        Path.combine(
+          .difference,
+          Path()..addRect(Rect.fromPoints(center, end).inflate(_minMarkGap)),
+          Path.combine(
+            .difference,
+            _circle(center, radius),
+            _circle(center, layout.innerRow - layout.rowWidth / 2),
+          ),
+        ),
+      );
+      canvas.drawLine(center, end, paint);
+      canvas.restore();
+    }
+
+    final step = _step(layout.marks * pi / 180, [1, ...groups]);
     for (var degree = 0; degree <= 180; degree += step) {
-      // Clockwise on screen from the right: through the triangle.
-      final direction = Offset.fromDirection(degree * pi / 180);
-      final length = _markLength(_tier(degree, _degreeGroups), _degreeGroups);
+      final direction = _direction(protractor, degree);
+      final length = _markLength(_tier(degree, groups), groups);
       canvas.drawLine(
-        center + direction * radius,
-        center + direction * (radius - length),
+        center + direction * layout.marks,
+        center + direction * (layout.marks - length),
         paint,
       );
     }
 
-    final widest = _layOutText('180', textStyle);
-    final rowGap = 2 * _clearance(widest);
-    final outerRow = radius - _longMark - rowGap / 2;
-    final innerRow = outerRow - rowGap;
     // Labels on the same angles in both rows, far enough apart along the
     // inner (shorter) one not to overlap.
-    var degreesPerLabel = _degreesPerLabel;
+    final labelStep = groups.last;
+    var degreesPerLabel = labelStep;
     while (degreesPerLabel < 180 &&
-        innerRow * degreesPerLabel * pi / 180 < rowGap) {
-      degreesPerLabel += _degreesPerLabel;
+        layout.innerRow * degreesPerLabel * pi / 180 <
+            layout.widest.width + 2 * _minMarkGap) {
+      degreesPerLabel += labelStep;
     }
+
+    // From the labels out to the sides, on the labelled angles.
+    for (
+      var degree = degreesPerLabel;
+      degree < 180;
+      degree += degreesPerLabel
+    ) {
+      final direction = _direction(protractor, degree);
+      final end = _toOutline(center, direction);
+      if (degree == 90 || end == null) continue; // the perpendicular
+      final start = center + direction * (radius + _minMarkGap);
+      if ((end - center).distance > (start - center).distance) {
+        canvas.drawLine(start, end, paint);
+      }
+    }
+    _paintEdgeDegrees(canvas, protractor);
+
     for (var degree = 0; degree <= 180; degree += degreesPerLabel) {
-      final direction = Offset.fromDirection(degree * pi / 180);
+      final direction = _direction(protractor, degree);
+      // Upright when read from the centre.
+      final rotation = direction.direction + pi / 2;
       for (final (row, value) in [
-        (outerRow, 180 - degree),
-        (innerRow, degree),
+        (layout.outerRow, degree),
+        (layout.innerRow, 180 - degree),
       ]) {
-        final label = _layOutText('$value', textStyle);
+        final label = _layOutText(_protractorLabel(value), textStyle);
         final labelCenter = center + direction * row;
-        if (!_protractorLabelFits(labelCenter, label)) continue;
-        label.paint(
-          canvas,
-          labelCenter - Offset(label.width / 2, label.height / 2),
-        );
+        if (!_clearOfRingAndSides(labelCenter, label, rotation: rotation) ||
+            !_clearOfScales(
+              labelCenter,
+              label,
+              outline.scales,
+              rotation: rotation,
+            )) {
+          continue;
+        }
+        canvas.save();
+        canvas.translate(labelCenter.dx, labelCenter.dy);
+        canvas.rotate(rotation);
+        label.paint(canvas, Offset(-label.width / 2, -label.height / 2));
+        canvas.restore();
       }
     }
   }
 
-  /// Whether a protractor [label] centred at [center] keeps clear of the
-  /// ring, the sides and the labels of scales along them.
-  bool _protractorLabelFits(Offset center, TextPainter label) {
-    final clearance = _clearance(label);
-    if (center.distance < outline.ringOuter + clearance) return false;
-    if (outline.sides.any((side) => side.distanceTo(center) < clearance)) {
-      return false;
+  /// A protractor label for [degrees]: without the ° sign, which would only
+  /// crowd it.
+  String _protractorLabel(int degrees) =>
+      angleUnit == .degrees ? '$degrees' : angleUnit.format(degrees);
+
+  /// A unit vector [degree]s round [protractor] from its base on the right,
+  /// towards its inside.
+  static Offset _direction(RulerProtractor protractor, num degree) {
+    final inward = protractor.inward;
+    final right = Offset(-inward.dy, inward.dx);
+    final radians = degree * pi / 180;
+    return right * cos(radians) + inward * sin(radians);
+  }
+
+  /// Where a line from [point] towards [direction] leaves the outline, or
+  /// null if it runs along a side.
+  Offset? _toOutline(Offset point, Offset direction) {
+    Offset? nearest;
+    for (final side in outline.sides) {
+      final hit = side.intersect(point, direction);
+      if (hit == null || (hit - point).distance < _minMarkGap) continue;
+      if (nearest == null ||
+          (hit - point).distance < (nearest - point).distance) {
+        nearest = hit;
+      }
     }
-    final scaleLabels = _longMark + (1 + _labelGap) * label.height;
-    return !outline.scales.any(
-      (scale) =>
-          scale.labeled &&
-          RulerEdge(
-                start: scale.origin + scale.direction * scale.from,
-                end: scale.origin + scale.direction * scale.to,
-              ).distanceTo(center) <
-              scaleLabels + clearance,
+    return nearest;
+  }
+
+  /// Degree marks on the sides where lines from the protractor's centre meet
+  /// them, each along its line, to read angles at the edge; shortened to
+  /// keep clear of the protractor's labels.
+  void _paintEdgeDegrees(Canvas canvas, RulerProtractor protractor) {
+    final (:center, :radius, inward: _) = protractor;
+    final groups = _degreeGroups;
+    // Not the base, which runs through the centre.
+    final sides = outline.sides
+        .where((side) => side.distanceTo(center) >= _minMarkGap)
+        .toList();
+    if (sides.isEmpty) return;
+    final nearest = sides.map((side) => side.distanceTo(center)).reduce(min);
+    final step = _step(nearest * pi / 180, [1, ...groups]);
+    final paint = _markPaint;
+    for (var degree = step; degree < 180; degree += step) {
+      final direction = _direction(protractor, degree);
+      for (final side in sides) {
+        final hit = side.intersect(center, direction);
+        if (hit == null ||
+            (hit - side.start).distance < _minMarkGap ||
+            (hit - side.end).distance < _minMarkGap) {
+          continue;
+        }
+        final room = (hit - center).distance - radius - _minMarkGap;
+        if (room <= 0) continue;
+        final length =
+            _markLength(_tier(degree, groups), groups) *
+            min(1.0, room / _longMark);
+        // Along the angle it marks, pointing at the centre.
+        canvas.drawLine(hit, hit - direction * length, paint);
+      }
+    }
+  }
+
+  /// Inside the protractor's marks, like on a Geodreieck: lines parallel to
+  /// its base at distances of the [unit], a scale up from the base on either
+  /// side (about halfway out) to measure them, and dashed lines at 45°.
+  void _paintInside(
+    Canvas canvas,
+    RulerProtractor protractor,
+    List<Offset> screen,
+  ) {
+    final (:center, :inward, radius: _) = protractor;
+    final inside = _protractorLayout!.inside;
+    final markGap = markMm * pixelsPerMm;
+    if (!(markGap > 0) || inside <= 0) return;
+    final right = Offset(-inward.dy, inward.dx);
+    final groups = unit.groups;
+    // E.g. every 5 mm for mm, every 1/2 inch for inches.
+    final parallelGroup = groups.length > 1
+        ? groups[groups.length - 2]
+        : groups.last;
+
+    // The scales stand on a line between two of the base's labels (an odd
+    // multiple of parallelGroup marks), so they don't cover them.
+    final groupGap = parallelGroup * markGap;
+    final offset =
+        (2 * max(0, ((inside / 2 / groupGap - 1) / 2).round()) + 1) * groupGap;
+    final scales = <RulerScale>[
+      if (offset < inside)
+        for (final side in const [1.0, -1.0])
+          (
+            origin: center + right * (offset * side),
+            direction: inward,
+            inward: right * -side,
+            from: 0,
+            to: sqrt(inside * inside - offset * offset),
+            labeled: true,
+          ),
+    ];
+    for (final (index, scale) in scales.indexed) {
+      _paintScale(canvas, outline.scales.length + index, scale, screen);
+    }
+
+    final sample = _layOutText(unit.label(groups.last), textStyle);
+    Path band(RulerScale scale, double reach) {
+      final RulerEdge(:start, :end) = _sideOf(scale);
+      final back = scale.inward * -_minMarkGap;
+      final forth = scale.inward * (reach + _minMarkGap);
+      return Path()..addPolygon([
+        start + back,
+        end + back,
+        end + forth,
+        start + forth,
+      ], true);
+    }
+
+    final perpendicularEnd = center + inward * inside;
+    final keepOut = [
+      for (final scale in [...outline.scales, ...scales])
+        band(scale, _reach(scale, sample)),
+      _circle(.zero, outline.ringOuter + _minMarkGap),
+      // Beside the perpendicular.
+      Path()..addPolygon([
+        center + right * _minMarkGap,
+        perpendicularEnd + right * _minMarkGap,
+        perpendicularEnd - right * _minMarkGap,
+        center - right * _minMarkGap,
+      ], true),
+    ];
+    final clip = keepOut.fold(
+      Path.combine(.intersect, outline.path, _circle(center, inside)),
+      (area, out) => Path.combine(.difference, area, out),
     );
+
+    final step = _step(markGap, [parallelGroup], minGap: _minParallelGap);
+    final paint = _markPaint;
+    canvas.save();
+    canvas.clipPath(clip);
+    for (var i = step; i * markGap <= inside; i += step) {
+      final across = center + inward * (i * markGap);
+      canvas.drawLine(across - right * inside, across + right * inside, paint);
+    }
+    for (final degree in const [45, 135]) {
+      _drawDashed(
+        canvas,
+        center,
+        center + _direction(protractor, degree) * inside,
+        paint,
+      );
+    }
+    canvas.restore();
+  }
+
+  static Path _circle(Offset center, double radius) =>
+      Path()..addOval(Rect.fromCircle(center: center, radius: radius));
+
+  static void _drawDashed(Canvas canvas, Offset from, Offset to, Paint paint) {
+    final length = (to - from).distance;
+    final direction = (to - from) / length;
+    for (var along = 0.0; along < length; along += 2 * _dash) {
+      canvas.drawLine(
+        from + direction * along,
+        from + direction * min(along + _dash, length),
+        paint,
+      );
+    }
   }
 
   void _paintRing(Canvas canvas) {
@@ -959,7 +1469,7 @@ class _RulerPainter extends CustomPainter {
     canvas.save();
     canvas.rotate(-angle);
     final label = _layOutText(
-      '$degrees°',
+      angleUnit.format(degrees),
       textStyle.copyWith(color: colorScheme.onSurface),
     );
     label.paint(canvas, Offset(-label.width / 2, -label.height / 2));
@@ -983,6 +1493,8 @@ class _RulerPainter extends CustomPainter {
       angle != oldDelegate.angle ||
       pixelsPerMm != oldDelegate.pixelsPerMm ||
       unit != oldDelegate.unit ||
+      angleUnit != oldDelegate.angleUnit ||
+      degrees != oldDelegate.degrees ||
       markMm != oldDelegate.markMm ||
       colorScheme != oldDelegate.colorScheme ||
       textStyle != oldDelegate.textStyle;

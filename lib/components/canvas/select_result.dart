@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:saber/components/canvas/_stroke.dart';
 import 'package:saber/components/canvas/image/editor_image.dart';
+import 'package:saber/data/editor/selection_transform.dart';
 
 class SelectResult {
   int pageIndex;
@@ -10,6 +11,14 @@ class SelectResult {
 
   /// The page the selection was made on, before any move to another page.
   int pageIndexStart;
+
+  /// The box with handles around what's selected, once selecting is done
+  /// and something is selected.
+  SelectionBox? box;
+
+  /// What made the selection (an editor), as the selection tools are shared
+  /// by every editor (e.g. two notes side by side).
+  Object? owner;
 
   SelectResult({
     required this.pageIndex,
@@ -36,6 +45,6 @@ class SelectResult {
       images: images ?? this.images,
       path: path ?? this.path,
       pageIndexStart: pageIndexStart ?? this.pageIndexStart,
-    );
+    )..owner = owner;
   }
 }

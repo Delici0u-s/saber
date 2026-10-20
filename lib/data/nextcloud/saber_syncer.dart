@@ -195,7 +195,10 @@ class const SaberSyncInterface()
     SaberSyncFile file,
     // ignore: avoid_renaming_method_parameters
     Uint8List encryptedBytes, {
-    @visibleForTesting bool awaitWrite = false,
+    // Awaited: the downloader reports the file as downloaded once this
+    // returns, and an open note reloads then, so it mustn't read it half
+    // written.
+    @visibleForTesting bool awaitWrite = true,
   }) async {
     if (file.localFile.path == NextcloudClientExtension.configFileName) {
       // Config file changed, already handled in [downloadRemoteFile]

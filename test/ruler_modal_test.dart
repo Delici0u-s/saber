@@ -25,6 +25,7 @@ void main() {
     stows.lastRulerShape.value = RulerShape.ruler.name;
     stows.rulerMarkSpacingMm.value = 1;
     stows.rulerUnit.value = RulerUnit.mm.name;
+    stows.rulerAngleUnit.value = AngleUnit.degrees.name;
     ruler = Ruler()..visible = true;
     hidden = false;
   });
@@ -58,6 +59,15 @@ void main() {
       expect(ruler.unit, unit);
     }
     expect(find.byType(TextField), findsOneWidget);
+  });
+
+  testWidgets('picks an angle unit', (tester) async {
+    await pumpModal(tester);
+    await tester.tap(find.byType(DropdownButton<AngleUnit>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(t.editor.rulerOptions.angleUnits.radians).last);
+    await tester.pumpAndSettle();
+    expect(ruler.angleUnit, AngleUnit.radians);
   });
 
   testWidgets('sets the mark spacing, ignoring invalid input', (tester) async {

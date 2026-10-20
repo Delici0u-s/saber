@@ -41,6 +41,15 @@ class Stroke {
   /// that are left don't move.
   double lineStyleOffset;
 
+  /// Whether this stroke is tape: an opaque strip that hides what's under
+  /// it until tapped (see [tapeRevealed]). Saved with a flag other Saber
+  /// versions ignore, so there it's an ordinary opaque stroke.
+  bool isTape;
+
+  /// Whether this tape is tapped open, showing what's under it. Not saved:
+  /// tape is hidden whenever the note is opened.
+  var tapeRevealed = false;
+
   /// Whether this stroke is drawn in pieces (dashes or dots), see [lineStyle].
   /// A dot stays a dot.
   bool get isInPieces => lineStyle != .solid && !isDot;
@@ -100,6 +109,7 @@ class Stroke {
     required this.toolId,
     this.lineStyle = .solid,
     this.lineStyleOffset = 0,
+    this.isTape = false,
   });
 
   factory fromJson(
@@ -181,6 +191,7 @@ class Stroke {
       toolId: toolId,
       lineStyle: .fromJson(json['ls']),
       lineStyleOffset: (json['lo'] as num?)?.toDouble() ?? 0,
+      isTape: json['tape'] == true,
     )..points.addAll(points);
   }
   Map<String, dynamic> toJson() {
@@ -197,6 +208,7 @@ class Stroke {
       'c': color.toARGB32(),
       if (lineStyle != .solid) 'ls': lineStyle.name,
       if (lineStyle != .solid && lineStyleOffset != 0) 'lo': lineStyleOffset,
+      if (isTape) 'tape': true,
     }..addAll(options.toJson());
   }
 
@@ -588,6 +600,7 @@ class Stroke {
     toolId: toolId,
     lineStyle: lineStyle,
     lineStyleOffset: lineStyleOffset,
+    isTape: isTape,
   )..points.addAll(points);
 }
 

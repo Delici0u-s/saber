@@ -7,7 +7,7 @@ import 'package:saber/data/extensions/axis_extensions.dart';
 import 'package:saber/data/prefs.dart';
 import 'package:saber/i18n/strings.g.dart';
 
-/// Lets the user pick the [Ruler]'s shape and unit, or hide it.
+/// Lets the user pick the [Ruler]'s shape, unit and angle unit, or hide it.
 class RulerModal extends StatelessWidget {
   const new({super.key, required this.ruler, required this.hide});
 
@@ -21,6 +21,7 @@ class RulerModal extends StatelessWidget {
     final axis = stows.editorToolbarAlignment.value.axis.opposite;
     final shapes = t.editor.rulerOptions.shapes;
     final units = t.editor.rulerOptions.units;
+    final angleUnits = t.editor.rulerOptions.angleUnits;
 
     return ListenableBuilder(
       listenable: ruler,
@@ -68,6 +69,25 @@ class RulerModal extends StatelessWidget {
               ),
             ),
             if (ruler.unit == .custom) const _MarkSpacingField(),
+            Tooltip(
+              message: t.editor.rulerOptions.angleUnit,
+              child: DropdownButton<AngleUnit>(
+                value: ruler.angleUnit,
+                onChanged: (angleUnit) {
+                  if (angleUnit != null) ruler.angleUnit = angleUnit;
+                },
+                items: [
+                  for (final angleUnit in AngleUnit.values)
+                    DropdownMenuItem(
+                      value: angleUnit,
+                      child: Text(switch (angleUnit) {
+                        .degrees => angleUnits.degrees,
+                        .radians => angleUnits.radians,
+                      }),
+                    ),
+                ],
+              ),
+            ),
             IconButton(
               tooltip: t.editor.rulerOptions.hide,
               onPressed: hide,
@@ -158,15 +178,22 @@ class _TrySquareIconPainter extends CustomPainter {
   final Color color;
 
   /// The blade's and the stock's widths, as fractions of the icon's size.
-  static const _blade = 0.2, _stock = 0.32;
+  static const _blade = 0.3, _stock = 0.36;
 
   /// Space around the L, as a fraction of the icon's size (like the padding
   /// in Material icons).
   static const _padding = 0.1;
 
+  /// The outline's width, as a fraction of the icon's size: that of Material
+  /// Symbols' outlined icons (2 at 24), so it sits evenly among them.
+  static const _strokeWidth = 1 / 12;
+
   @override
   void paint(Canvas canvas, Size size) {
-    final rect = (Offset.zero & size).deflate(size.shortestSide * _padding);
+    final strokeWidth = size.shortestSide * _strokeWidth;
+    final rect = (Offset.zero & size).deflate(
+      size.shortestSide * _padding + strokeWidth / 2,
+    );
     final blade = rect.width * _blade, stock = rect.width * _stock;
     canvas.drawPath(
       Path()..addPolygon([
@@ -177,7 +204,10 @@ class _TrySquareIconPainter extends CustomPainter {
         rect.bottomLeft + Offset(stock, 0),
         rect.bottomLeft,
       ], true),
-      Paint()..color = color,
+      Paint()
+        ..color = color
+        ..style = .stroke
+        ..strokeWidth = strokeWidth,
     );
   }
 

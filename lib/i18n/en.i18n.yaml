@@ -23,6 +23,9 @@ home:
   welcome: Welcome to Saber
   invalidFormat: The file you selected is not supported. Please select an sbn, sbn2, sba, or pdf file.
   noFiles: No files found
+  search:
+    tooltip: Search notes
+    hint: Note or folder name
   noPreviewAvailable: No preview available
   createNewNote: Tap the + button to create a new note
   backFolder: Go back to the previous folder
@@ -116,6 +119,8 @@ settings:
     maxImageSize: Maximum image size
     autoClearWhiteboardOnExit: Auto-clear the whiteboard
     disableEraserAfterUse: Auto-disable the eraser
+    scribbleToErase: Scribble to erase
+    doubleTapToErase: Double-tap to switch to the eraser
     hideFingerDrawingToggle: Hide the finger drawing toggle
     autoDisableFingerDrawingWhenStylusDetected: Auto-disable finger drawing
     editorPromptRename: Prompt you to rename new notes
@@ -139,6 +144,8 @@ settings:
     preferGreyscale: For e-ink displays
     autoClearWhiteboardOnExit: Clears the whiteboard after you exit the app
     disableEraserAfterUse: Automatically switches back to the pen after using the eraser
+    scribbleToErase: Scribbling back and forth over strokes with a pen or pencil erases them
+    doubleTapToErase: Double-tapping the page switches to the eraser, and back
     maxImageSize: Larger images will be compressed
     hideFingerDrawing:
       shown: Prevents accidental toggling
@@ -173,6 +180,11 @@ settings:
   accentColorPicker:
     pickAColor: Pick a color
   systemLanguage: Auto
+  doubleTapInputs:
+    off: "Off"
+    finger: Finger or mouse
+    pen: Pen
+    both: Finger, mouse and pen
   axisDirections:
   - Top
   - Right
@@ -296,13 +308,42 @@ editor:
     exportAs: "Export as:"
     fullscreen: Toggle fullscreen (F11)
     ruler: Ruler
+    insert: Insert
+    tools: Tools
+    pdf: PDF
   pens:
     fountainPen: Fountain pen
     ballpointPen: Ballpoint pen
     highlighter: Highlighter
+    tape: Tape
     pencil: Pencil
     shapePen: Shape pen
     laserPointer: Laser pointer
+  pdfPages:
+    title: Choose pages to import
+    all: All
+    none: None
+    ranges: Pages
+    rangesExample: e.g. 1-3, 7
+    rangesInvalid: Pages from 1 to $n, e.g. 1-3, 7
+    import:
+      one: Import $n page
+      other: Import $n pages
+  sideBySide:
+    title: Side by side
+    note: Note
+    pdf: PDF
+    lockPosition: Lock position
+    write: Write in this note
+    close: Close
+    alreadyOpen: This note is already open
+  zoomWindow:
+    title: Zoom window
+    back: Move back
+    forward: Move on
+    newLine: Next line
+    autoAdvance: Move on when writing reaches the shaded margin
+    close: Close the zoom window
   rulerOptions:
     shapes:
       ruler: Ruler
@@ -314,11 +355,16 @@ editor:
       inch: inch
       points: pt / pica
       custom: Custom
+    angleUnit: Angle unit
+    angleUnits:
+      degrees: Degrees (°)
+      radians: Radians (rad)
     markSpacing: Mark spacing
     mm: mm
     hide: Hide the ruler
   penOptions:
     size: Size
+    opacity: Opacity
     lineStyles:
       solid: Solid line
       dashed: Dashed line
@@ -368,6 +414,7 @@ editor:
   selectionBar:
     delete: Delete
     duplicate: Duplicate
+    thickness: Thickness
   menu:
     clearPage: Clear page $page/$totalPages
     clearAllPages: Clear all pages

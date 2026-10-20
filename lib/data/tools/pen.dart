@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -32,6 +33,7 @@ class Pen extends Tool {
     required this.color,
     required this.toolId,
     this.lineStyleStow,
+    this.opacityStow,
   });
 
   new fountainPen()
@@ -44,7 +46,8 @@ class Pen extends Tool {
       pressureEnabled = true,
       color = Color(stows.lastFountainPenColor.value),
       toolId = .fountainPen,
-      lineStyleStow = stows.lastFountainPenLineStyle;
+      lineStyleStow = stows.lastFountainPenLineStyle,
+      opacityStow = stows.lastFountainPenOpacity;
 
   new ballpointPen()
     : name = t.editor.pens.ballpointPen,
@@ -56,7 +59,8 @@ class Pen extends Tool {
       pressureEnabled = false,
       color = Color(stows.lastBallpointPenColor.value),
       toolId = .ballpointPen,
-      lineStyleStow = stows.lastBallpointPenLineStyle;
+      lineStyleStow = stows.lastBallpointPenLineStyle,
+      opacityStow = stows.lastBallpointPenOpacity;
 
   final String name;
   final double sizeMin, sizeMax, sizeStep;
@@ -83,6 +87,15 @@ class Pen extends Tool {
   LineStyle get lineStyle => .fromJson(lineStyleStow?.value);
   set lineStyle(LineStyle lineStyle) => lineStyleStow?.value = lineStyle.name;
 
+  /// Where this pen's [opacity] is saved,
+  /// or null if this pen's strokes are as opaque as its [color].
+  final PlainStow<double>? opacityStow;
+
+  /// How opaque this pen's strokes are, from 0 to 1, on top of [color]'s
+  /// own opacity (e.g. the highlighter's).
+  double get opacity => opacityStow?.value ?? 1;
+  set opacity(double opacity) => opacityStow?.value = opacity;
+
   static var _currentPen = Pen.fountainPen();
   static Pen get currentPen => _currentPen;
   static set currentPen(Pen currentPen) {
@@ -108,6 +121,9 @@ class Pen extends Tool {
   /// Whether holding this pen still turns the stroke into a shape.
   @protected
   bool get holdsToShape => true;
+
+  /// The tool the strokes drawn are saved as, usually this one.
+  ToolId get strokeToolId => toolId;
 
   static Timer? _holdTimer;
 
@@ -155,12 +171,12 @@ class Pen extends Tool {
     _stopWatchingForHold();
     detectedShape = null;
     currentStroke = Stroke(
-      color: color,
+      color: color.withValues(alpha: color.a * opacity),
       pressureEnabled: pressureEnabled,
       options: options.copyWith(isComplete: false),
       pageIndex: pageIndex,
       page: page,
-      toolId: toolId,
+      toolId: strokeToolId,
       lineStyle: lineStyle,
     );
     onDragUpdate(position, pressure);
@@ -187,8 +203,9 @@ class Pen extends Tool {
   }
 
   /// Replaces [rawStroke] with the recognized [shape],
-  /// keeping the stroke's color, options and tool.
+  /// keeping the stroke's color, options, tool and line style.
   static Stroke toShape(Stroke rawStroke, RecognizedUnistroke shape) {
+    final lineStyle = rawStroke.lineStyle;
     switch (shape.name) {
       case null:
         log.info('Detected unknown shape');
@@ -199,6 +216,17 @@ class Pen extends Tool {
       case DefaultUnistrokeNames.rectangle:
         final rect = shape.convertToRect();
         log.info('Detected rectangle: $rect');
+        // A styled one (or tape) is drawn along its outline, in dashes or
+        // dots.
+        if (lineStyle != .solid || rawStroke.isTape) {
+          return outlineStroke(rawStroke, [
+            rect.topLeft,
+            rect.topRight,
+            rect.bottomRight,
+            rect.bottomLeft,
+            rect.topLeft,
+          ]);
+        }
         return RectangleStroke(
           color: rawStroke.color,
           pressureEnabled: rawStroke.pressureEnabled,
@@ -211,6 +239,12 @@ class Pen extends Tool {
       case DefaultUnistrokeNames.circle:
         final (center, radius) = shape.convertToCircle();
         log.info('Detected circle: c=$center, r=$radius');
+        if (lineStyle != .solid || rawStroke.isTape) {
+          return outlineStroke(
+            rawStroke,
+            circleOutline(center, radius, rawStroke.options.size),
+          );
+        }
         return CircleStroke(
           color: rawStroke.color,
           pressureEnabled: rawStroke.pressureEnabled,
@@ -225,15 +259,51 @@ class Pen extends Tool {
       case DefaultUnistrokeNames.star:
         final polygon = shape.convertToCanonicalPolygon();
         log.info('Detected ${shape.name}');
-        return Stroke(
-          color: rawStroke.color,
-          pressureEnabled: rawStroke.pressureEnabled,
-          options: rawStroke.options,
-          pageIndex: rawStroke.pageIndex,
-          page: rawStroke.page,
-          toolId: rawStroke.toolId,
-        )..addPoints(polygon);
+        return outlineStroke(rawStroke, polygon);
     }
+  }
+
+  /// A circle drawn along its outline has at least this many points, so
+  /// a small one stays round.
+  static const _minCirclePoints = 16;
+
+  /// Points around a circle, about [strokeSize] apart like a drawn circle's,
+  /// ending where they start.
+  static List<Offset> circleOutline(
+    Offset center,
+    double radius,
+    double strokeSize,
+  ) {
+    final count = max(_minCirclePoints, (2 * pi * radius / strokeSize).ceil());
+    return [
+      for (var i = 0; i <= count; i++)
+        center + Offset.fromDirection(2 * pi * i / count, radius),
+    ];
+  }
+
+  /// A stroke through [outline], like [rawStroke] (with its line style),
+  /// but without tapers or streamlining, which would round its corners.
+  static Stroke outlineStroke(Stroke rawStroke, List<Offset> outline) {
+    final StrokeOptions(:start, :end) = rawStroke.options;
+    final options = rawStroke.options.copyWith(
+      streamline: 0,
+      // Copies: the ends are shared with the pen's options.
+      start: start.copyWith(
+        taperEnabled: false,
+        customTaper: start.customTaper,
+      ),
+      end: end.copyWith(taperEnabled: false, customTaper: end.customTaper),
+    );
+    return Stroke(
+      color: rawStroke.color,
+      pressureEnabled: rawStroke.pressureEnabled,
+      options: options,
+      pageIndex: rawStroke.pageIndex,
+      page: rawStroke.page,
+      toolId: rawStroke.toolId,
+      lineStyle: rawStroke.lineStyle,
+      isTape: rawStroke.isTape,
+    )..addPoints(outline);
   }
 
   /// The default stroke options.

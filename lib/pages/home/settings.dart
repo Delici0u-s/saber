@@ -31,6 +31,7 @@ import 'package:saber/data/locales.dart';
 import 'package:saber/data/prefs.dart';
 import 'package:saber/data/routes.dart';
 import 'package:saber/data/sentry/sentry_init.dart';
+import 'package:saber/data/tools/double_tap_to_erase.dart';
 import 'package:saber/data/tools/shape_pen.dart';
 import 'package:saber/i18n/strings.g.dart';
 import 'package:stow/stow.dart';
@@ -367,6 +368,30 @@ class _SettingsPageState extends State<SettingsPage> {
                   subtitle: t.settings.prefDescriptions.disableEraserAfterUse,
                   icon: FontAwesomeIcons.eraser,
                   pref: stows.disableEraserAfterUse,
+                ),
+                SettingsDropdown<String>(
+                  title: t.settings.prefLabels.doubleTapToErase,
+                  subtitle: t.settings.prefDescriptions.doubleTapToErase,
+                  icon: Icons.touch_app,
+                  pref: stows.doubleTapToErase,
+                  options: [
+                    for (final input in DoubleTapToErase.values)
+                      ToggleButtonsOption(
+                        input.name,
+                        Text(switch (input) {
+                          .off => t.settings.doubleTapInputs.off,
+                          .finger => t.settings.doubleTapInputs.finger,
+                          .pen => t.settings.doubleTapInputs.pen,
+                          .both => t.settings.doubleTapInputs.both,
+                        }),
+                      ),
+                  ],
+                ),
+                SettingsSwitch(
+                  title: t.settings.prefLabels.scribbleToErase,
+                  subtitle: t.settings.prefDescriptions.scribbleToErase,
+                  icon: Icons.gesture,
+                  pref: stows.scribbleToErase,
                 ),
                 ValueListenableBuilder(
                   valueListenable: stows.hideFingerDrawingToggle,

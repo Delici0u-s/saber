@@ -119,6 +119,13 @@ class EditorHistory {
     return _past.removeLast();
   }
 
+  /// How many changes [undo] can undo.
+  int get length => _past.length;
+
+  /// Forgets the last change, without it being redoable (e.g. the dots a
+  /// double tap drew), and returns it so it can be reverted.
+  EditorHistoryItem dropLast() => _past.removeLast();
+
   /// Returns true if there is something to undo.
   bool get canUndo {
     return _past.isNotEmpty;
@@ -152,6 +159,7 @@ class EditorHistoryItem {
     this.quillChange,
     this.colorChange,
     this.backgroundPatternChange,
+    this.imageRectChange,
   }) : assert(
          type != .move || offset != null,
          'Offset must be provided for move',
@@ -187,6 +195,13 @@ class EditorHistoryItem {
        assert(
          type != .replaceImage || replacementImages.length == images.length,
          'Each image needs a replacement for replaceImage',
+       ),
+       assert(
+         type != .transform ||
+             (replacementStrokes.length == strokes.length &&
+                 imageRectChange?.length == images.length),
+         'Each stroke needs a replacement and each image its change of place '
+         'for transform',
        );
 
   final EditorHistoryItemType type;
@@ -204,6 +219,10 @@ class EditorHistoryItem {
   final Map<Stroke, Change<Color>>? colorChange;
   final Change<CanvasBackgroundPattern>? backgroundPatternChange;
 
+  /// For [EditorHistoryItemType.transform]: where each of [images] was and
+  /// went.
+  final Map<EditorImage, Change<Rect>>? imageRectChange;
+
   EditorHistoryItem copyWith({
     EditorHistoryItemType? type,
     int? pageIndex,
@@ -217,6 +236,7 @@ class EditorHistoryItem {
     DocChange? quillChange,
     Map<Stroke, Change<Color>>? colorChange,
     Change<CanvasBackgroundPattern>? backgroundPatternChange,
+    Map<EditorImage, Change<Rect>>? imageRectChange,
   }) {
     return EditorHistoryItem(
       type: type ?? this.type,
@@ -232,6 +252,7 @@ class EditorHistoryItem {
       colorChange: colorChange ?? this.colorChange,
       backgroundPatternChange:
           backgroundPatternChange ?? this.backgroundPatternChange,
+      imageRectChange: imageRectChange ?? this.imageRectChange,
     );
   }
 }
@@ -248,4 +269,8 @@ enum EditorHistoryItemType {
   changeColor,
   backgroundPattern,
   replaceImage,
+
+  /// Resizing, rotating or changing the thickness of a selection: [strokes]
+  /// were swapped for [replacementStrokes], and images moved.
+  transform,
 }

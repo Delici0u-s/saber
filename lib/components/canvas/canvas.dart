@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:one_dollar_unistroke_recognizer/one_dollar_unistroke_recognizer.dart';
 import 'package:onyxsdk_pen/onyxsdk_pen.dart';
@@ -26,6 +28,7 @@ class Canvas extends StatelessWidget {
     required this.currentTool,
     required this.currentScale,
     this.placeholder = false,
+    this.overlay,
   });
 
   final String path;
@@ -43,6 +46,10 @@ class Canvas extends StatelessWidget {
   final Tool currentTool;
   final double currentScale;
   final bool placeholder;
+
+  /// Builds what's shown over the page, in its coordinates (e.g. a
+  /// [Positioned]), given how many screen pixels a page unit takes up.
+  final Widget Function(double screenScale)? overlay;
 
   OnyxStrokeStyle _getOnyxTool(Tool currentTool) {
     if (placeholder) return OnyxStrokeStyle.pen;
@@ -91,6 +98,22 @@ class Canvas extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) =>
+          _build(context, screenScale: currentScale * _fitScale(constraints)),
+    );
+  }
+
+  /// How much the page is scaled to fit [constraints] (see [FittedBox]).
+  double _fitScale(BoxConstraints constraints) {
+    final fits = [
+      constraints.maxWidth / page.size.width,
+      constraints.maxHeight / page.size.height,
+    ].where((fit) => fit.isFinite);
+    return fits.isEmpty ? 1 : fits.reduce(min);
+  }
+
+  Widget _build(BuildContext context, {required double screenScale}) {
     return Center(
       child: FittedBox(
         child: DecoratedBox(
@@ -114,20 +137,28 @@ class Canvas extends StatelessWidget {
                     strokeStyle: _getOnyxTool(currentTool),
                     strokeColor: _getOnyxColor(),
                     strokeWidth: _getOnyxWidth(),
-                    child: InnerCanvas(
-                      key: page.innerCanvasKey,
-                      pageIndex: pageIndex,
-                      redrawPageListenable: page,
-                      width: page.size.width,
-                      height: page.size.height,
-                      textEditing: textEditing,
-                      coreInfo: coreInfo,
-                      currentStroke: currentStroke,
-                      currentStrokeDetectedShape: currentStrokeDetectedShape,
-                      currentSelection: currentSelection,
-                      setAsBackground: setAsBackground,
-                      currentToolIsSelect: currentTool.toolId == ToolId.select,
-                      currentScale: currentScale,
+                    child: Stack(
+                      children: [
+                        InnerCanvas(
+                          key: page.innerCanvasKey,
+                          pageIndex: pageIndex,
+                          redrawPageListenable: page,
+                          width: page.size.width,
+                          height: page.size.height,
+                          textEditing: textEditing,
+                          coreInfo: coreInfo,
+                          currentStroke: currentStroke,
+                          currentStrokeDetectedShape:
+                              currentStrokeDetectedShape,
+                          currentSelection: currentSelection,
+                          setAsBackground: setAsBackground,
+                          currentToolIsSelect:
+                              currentTool.toolId == ToolId.select,
+                          currentScale: currentScale,
+                          screenScale: screenScale,
+                        ),
+                        ?overlay?.call(screenScale),
+                      ],
                     ),
                   ),
                 )

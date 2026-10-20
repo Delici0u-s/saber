@@ -19,6 +19,9 @@ class ToolbarIconButton extends StatelessWidget {
   final EdgeInsets padding;
   final Widget child;
 
+  /// The icon's size and the space around it inside the button.
+  static const iconSize = 20.0, innerPadding = 8.0;
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = ColorScheme.of(context);
@@ -42,8 +45,8 @@ class ToolbarIconButton extends StatelessWidget {
       backgroundColor: backgroundColor,
       iconColor: foregroundColor,
       foregroundColor: foregroundColor,
-      iconSize: const WidgetStatePropertyAll(20),
-      padding: const WidgetStatePropertyAll(EdgeInsets.all(8)),
+      iconSize: const WidgetStatePropertyAll(iconSize),
+      padding: const WidgetStatePropertyAll(EdgeInsets.all(innerPadding)),
       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
     );
 

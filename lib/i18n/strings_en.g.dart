@@ -87,6 +87,8 @@ class Translations$home$en {
 	/// en: 'No files found'
 	String get noFiles => 'No files found';
 
+	late final Translations$home$search$en search = Translations$home$search$en.internal(_root);
+
 	/// en: 'No preview available'
 	String get noPreviewAvailable => 'No preview available';
 
@@ -137,6 +139,7 @@ class Translations$settings$en {
 	/// en: 'Auto'
 	String get systemLanguage => 'Auto';
 
+	late final Translations$settings$doubleTapInputs$en doubleTapInputs = Translations$settings$doubleTapInputs$en.internal(_root);
 	List<String> get axisDirections => [
 		'Top',
 		'Right',
@@ -315,6 +318,9 @@ class Translations$editor$en {
 	// Translations
 	late final Translations$editor$toolbar$en toolbar = Translations$editor$toolbar$en.internal(_root);
 	late final Translations$editor$pens$en pens = Translations$editor$pens$en.internal(_root);
+	late final Translations$editor$pdfPages$en pdfPages = Translations$editor$pdfPages$en.internal(_root);
+	late final Translations$editor$sideBySide$en sideBySide = Translations$editor$sideBySide$en.internal(_root);
+	late final Translations$editor$zoomWindow$en zoomWindow = Translations$editor$zoomWindow$en.internal(_root);
 	late final Translations$editor$rulerOptions$en rulerOptions = Translations$editor$rulerOptions$en.internal(_root);
 	late final Translations$editor$penOptions$en penOptions = Translations$editor$penOptions$en.internal(_root);
 	late final Translations$editor$eraserOptions$en eraserOptions = Translations$editor$eraserOptions$en.internal(_root);
@@ -412,6 +418,21 @@ class Translations$home$create$en {
 
 	/// en: 'Import note'
 	String get importNote => 'Import note';
+}
+
+// Path: home.search
+class Translations$home$search$en {
+	Translations$home$search$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Search notes'
+	String get tooltip => 'Search notes';
+
+	/// en: 'Note or folder name'
+	String get hint => 'Note or folder name';
 }
 
 // Path: home.newFolder
@@ -710,6 +731,12 @@ class Translations$settings$prefLabels$en {
 	/// en: 'Auto-disable the eraser'
 	String get disableEraserAfterUse => 'Auto-disable the eraser';
 
+	/// en: 'Scribble to erase'
+	String get scribbleToErase => 'Scribble to erase';
+
+	/// en: 'Double-tap to switch to the eraser'
+	String get doubleTapToErase => 'Double-tap to switch to the eraser';
+
 	/// en: 'Hide the finger drawing toggle'
 	String get hideFingerDrawingToggle => 'Hide the finger drawing toggle';
 
@@ -784,6 +811,12 @@ class Translations$settings$prefDescriptions$en {
 
 	/// en: 'Automatically switches back to the pen after using the eraser'
 	String get disableEraserAfterUse => 'Automatically switches back to the pen after using the eraser';
+
+	/// en: 'Scribbling back and forth over strokes with a pen or pencil erases them'
+	String get scribbleToErase => 'Scribbling back and forth over strokes with a pen or pencil erases them';
+
+	/// en: 'Double-tapping the page switches to the eraser, and back'
+	String get doubleTapToErase => 'Double-tapping the page switches to the eraser, and back';
 
 	/// en: 'Larger images will be compressed'
 	String get maxImageSize => 'Larger images will be compressed';
@@ -878,6 +911,27 @@ class Translations$settings$accentColorPicker$en {
 
 	/// en: 'Pick a color'
 	String get pickAColor => 'Pick a color';
+}
+
+// Path: settings.doubleTapInputs
+class Translations$settings$doubleTapInputs$en {
+	Translations$settings$doubleTapInputs$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Off'
+	String get off => 'Off';
+
+	/// en: 'Finger or mouse'
+	String get finger => 'Finger or mouse';
+
+	/// en: 'Pen'
+	String get pen => 'Pen';
+
+	/// en: 'Finger, mouse and pen'
+	String get both => 'Finger, mouse and pen';
 }
 
 // Path: settings.reset
@@ -1139,6 +1193,15 @@ class Translations$editor$toolbar$en {
 
 	/// en: 'Ruler'
 	String get ruler => 'Ruler';
+
+	/// en: 'Insert'
+	String get insert => 'Insert';
+
+	/// en: 'Tools'
+	String get tools => 'Tools';
+
+	/// en: 'PDF'
+	String get pdf => 'PDF';
 }
 
 // Path: editor.pens
@@ -1158,6 +1221,9 @@ class Translations$editor$pens$en {
 	/// en: 'Highlighter'
 	String get highlighter => 'Highlighter';
 
+	/// en: 'Tape'
+	String get tape => 'Tape';
+
 	/// en: 'Pencil'
 	String get pencil => 'Pencil';
 
@@ -1166,6 +1232,96 @@ class Translations$editor$pens$en {
 
 	/// en: 'Laser pointer'
 	String get laserPointer => 'Laser pointer';
+}
+
+// Path: editor.pdfPages
+class Translations$editor$pdfPages$en {
+	Translations$editor$pdfPages$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Choose pages to import'
+	String get title => 'Choose pages to import';
+
+	/// en: 'All'
+	String get all => 'All';
+
+	/// en: 'None'
+	String get none => 'None';
+
+	/// en: 'Pages'
+	String get ranges => 'Pages';
+
+	/// en: 'e.g. 1-3, 7'
+	String get rangesExample => 'e.g. 1-3, 7';
+
+	/// en: 'Pages from 1 to $n, e.g. 1-3, 7'
+	String rangesInvalid({required Object n}) => 'Pages from 1 to ${n}, e.g. 1-3, 7';
+
+	/// en: '(one) {Import $n page} (other) {Import $n pages}'
+	String import({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n,
+		one: 'Import ${n} page',
+		other: 'Import ${n} pages',
+	);
+}
+
+// Path: editor.sideBySide
+class Translations$editor$sideBySide$en {
+	Translations$editor$sideBySide$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Side by side'
+	String get title => 'Side by side';
+
+	/// en: 'Note'
+	String get note => 'Note';
+
+	/// en: 'PDF'
+	String get pdf => 'PDF';
+
+	/// en: 'Lock position'
+	String get lockPosition => 'Lock position';
+
+	/// en: 'Write in this note'
+	String get write => 'Write in this note';
+
+	/// en: 'Close'
+	String get close => 'Close';
+
+	/// en: 'This note is already open'
+	String get alreadyOpen => 'This note is already open';
+}
+
+// Path: editor.zoomWindow
+class Translations$editor$zoomWindow$en {
+	Translations$editor$zoomWindow$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Zoom window'
+	String get title => 'Zoom window';
+
+	/// en: 'Move back'
+	String get back => 'Move back';
+
+	/// en: 'Move on'
+	String get forward => 'Move on';
+
+	/// en: 'Next line'
+	String get newLine => 'Next line';
+
+	/// en: 'Move on when writing reaches the shaded margin'
+	String get autoAdvance => 'Move on when writing reaches the shaded margin';
+
+	/// en: 'Close the zoom window'
+	String get close => 'Close the zoom window';
 }
 
 // Path: editor.rulerOptions
@@ -1181,6 +1337,11 @@ class Translations$editor$rulerOptions$en {
 	String get unit => 'Unit';
 
 	late final Translations$editor$rulerOptions$units$en units = Translations$editor$rulerOptions$units$en.internal(_root);
+
+	/// en: 'Angle unit'
+	String get angleUnit => 'Angle unit';
+
+	late final Translations$editor$rulerOptions$angleUnits$en angleUnits = Translations$editor$rulerOptions$angleUnits$en.internal(_root);
 
 	/// en: 'Mark spacing'
 	String get markSpacing => 'Mark spacing';
@@ -1202,6 +1363,9 @@ class Translations$editor$penOptions$en {
 
 	/// en: 'Size'
 	String get size => 'Size';
+
+	/// en: 'Opacity'
+	String get opacity => 'Opacity';
 
 	late final Translations$editor$penOptions$lineStyles$en lineStyles = Translations$editor$penOptions$lineStyles$en.internal(_root);
 }
@@ -1366,6 +1530,9 @@ class Translations$editor$selectionBar$en {
 
 	/// en: 'Duplicate'
 	String get duplicate => 'Duplicate';
+
+	/// en: 'Thickness'
+	String get thickness => 'Thickness';
 }
 
 // Path: editor.menu
@@ -1700,6 +1867,21 @@ class Translations$editor$rulerOptions$units$en {
 
 	/// en: 'Custom'
 	String get custom => 'Custom';
+}
+
+// Path: editor.rulerOptions.angleUnits
+class Translations$editor$rulerOptions$angleUnits$en {
+	Translations$editor$rulerOptions$angleUnits$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Degrees (°)'
+	String get degrees => 'Degrees (°)';
+
+	/// en: 'Radians (rad)'
+	String get radians => 'Radians (rad)';
 }
 
 // Path: editor.penOptions.lineStyles

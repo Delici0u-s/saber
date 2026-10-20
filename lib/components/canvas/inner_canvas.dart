@@ -9,6 +9,7 @@ import 'package:saber/components/canvas/canvas_image.dart';
 import 'package:saber/components/canvas/image/editor_image.dart';
 import 'package:saber/components/canvas/select_result.dart';
 import 'package:saber/data/editor/editor_core_info.dart';
+import 'package:saber/data/editor/page.dart';
 import 'package:saber/data/prefs.dart';
 import 'package:saber/i18n/strings.g.dart';
 import 'package:sbn/canvas_background_pattern.dart';
@@ -31,6 +32,7 @@ class InnerCanvas extends StatefulWidget {
     this.onRenderObjectChange,
     required this.currentToolIsSelect,
     required this.currentScale,
+    this.screenScale,
   });
 
   final int pageIndex;
@@ -50,7 +52,38 @@ class InnerCanvas extends StatefulWidget {
 
   final double currentScale;
 
+  /// See [CanvasPainter.screenScale].
+  final double? screenScale;
+
   static const defaultBackgroundColor = Color(0xFFFCFCFC);
+
+  /// Whether pages are drawn inverted (dark) in [context].
+  static bool invertIn(BuildContext context) =>
+      stows.editorAutoInvert.value && Theme.of(context).brightness == .dark;
+
+  /// Paints [page]'s background: its colour and [coreInfo]'s pattern, or
+  /// white under a background image.
+  static CanvasBackgroundPainter backgroundPainter(
+    BuildContext context,
+    EditorCoreInfo coreInfo,
+    EditorPage page,
+  ) {
+    final colorScheme = ColorScheme.of(context);
+    final hasImage = page.backgroundImage != null;
+    return CanvasBackgroundPainter(
+      invert: invertIn(context),
+      backgroundColor: hasImage
+          ? Colors.white
+          : coreInfo.backgroundColor ?? defaultBackgroundColor,
+      backgroundPattern: hasImage
+          ? CanvasBackgroundPattern.none
+          : coreInfo.backgroundPattern,
+      lineHeight: coreInfo.lineHeight,
+      lineThickness: coreInfo.lineThickness,
+      primaryColor: colorScheme.primary,
+      secondaryColor: colorScheme.secondary,
+    );
+  }
 
   @override
   State<InnerCanvas> createState() => _InnerCanvasState();
@@ -61,10 +94,7 @@ class _InnerCanvasState extends State<InnerCanvas> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final brightness = theme.brightness;
-    final invert = stows.editorAutoInvert.value && brightness == .dark;
-    final Color backgroundColor =
-        widget.coreInfo.backgroundColor ?? InnerCanvas.defaultBackgroundColor;
+    final invert = InnerCanvas.invertIn(context);
 
     if (widget.coreInfo.pages.isEmpty) {
       return SizedBox(width: widget.width, height: widget.height);
@@ -105,27 +135,7 @@ class _InnerCanvasState extends State<InnerCanvas> {
 
     return RepaintBoundary(
       child: CustomPaint(
-        painter: CanvasBackgroundPainter(
-          invert: invert,
-          backgroundColor: () {
-            if (page.backgroundImage != null) {
-              return Colors.white;
-            } else {
-              return backgroundColor;
-            }
-          }(),
-          backgroundPattern: () {
-            if (page.backgroundImage != null) {
-              return CanvasBackgroundPattern.none;
-            } else {
-              return widget.coreInfo.backgroundPattern;
-            }
-          }(),
-          lineHeight: widget.coreInfo.lineHeight,
-          lineThickness: widget.coreInfo.lineThickness,
-          primaryColor: colorScheme.primary,
-          secondaryColor: colorScheme.secondary,
-        ),
+        painter: InnerCanvas.backgroundPainter(context, widget.coreInfo, page),
         foregroundPainter: CanvasPainter(
           repaint: widget.redrawPageListenable,
           invert: invert,
@@ -139,6 +149,7 @@ class _InnerCanvasState extends State<InnerCanvas> {
           pageIndex: widget.pageIndex,
           totalPages: widget.coreInfo.pages.length,
           currentScale: widget.currentScale,
+          screenScale: widget.screenScale,
           defaultTextStyle: theme.textTheme.bodyMedium!,
         ),
         isComplex: true,

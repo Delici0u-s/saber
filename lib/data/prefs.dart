@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:perfect_freehand/perfect_freehand.dart';
 import 'package:saber/components/canvas/ruler.dart';
+import 'package:saber/components/canvas/zoom_window.dart';
 import 'package:saber/components/home/home_layout_button.dart';
 import 'package:saber/components/home/sort_button.dart';
 import 'package:saber/components/navbar/responsive_navbar.dart';
@@ -14,9 +15,13 @@ import 'package:saber/data/editor/page.dart';
 import 'package:saber/data/flavor_config.dart';
 import 'package:saber/data/quota.dart';
 import 'package:saber/data/sentry/sentry_consent.dart';
+import 'package:saber/data/tools/double_tap_to_erase.dart';
 import 'package:saber/data/tools/highlighter.dart';
 import 'package:saber/data/tools/line_style.dart';
 import 'package:saber/data/tools/pen.dart';
+import 'package:saber/data/tools/scribble_erase.dart';
+import 'package:saber/data/tools/tape.dart';
+import 'package:saber/pages/editor/side_by_side.dart';
 import 'package:sbn/canvas_background_pattern.dart';
 import 'package:sbn/tool_id.dart';
 import 'package:stow/stow.dart';
@@ -229,6 +234,54 @@ class Stows {
     false,
     volatile: !_isOnMainIsolate,
   );
+
+  /// Whether the zoom window moves on when a stroke ends in its margin,
+  /// see [ZoomWindow.autoAdvance].
+  final zoomWindowAutoAdvance = PlainStow(
+    'zoomWindowAutoAdvance',
+    true,
+    volatile: !_isOnMainIsolate,
+  );
+
+  /// How much of the canvas's height the zoom window's panel takes, see
+  /// [ZoomWindow.panelFraction].
+  final zoomWindowPanelFraction = PlainStow(
+    'zoomWindowPanelFraction',
+    1 / 3,
+    volatile: !_isOnMainIsolate,
+  );
+
+  /// How much of the editor the second pane takes when two notes (or a note
+  /// and a PDF) are side by side, see [SideBySide.fraction].
+  final sideBySideFraction = PlainStow(
+    'sideBySideFraction',
+    0.5,
+    volatile: !_isOnMainIsolate,
+  );
+
+  /// Which input switches to the eraser by double-tapping, by name, see
+  /// [DoubleTapToErase].
+  final doubleTapToErase = PlainStow(
+    'doubleTapToErase',
+    DoubleTapToErase.finger.name,
+    volatile: !_isOnMainIsolate,
+  );
+
+  /// Whether tape (rather than the highlighter) was picked last in the
+  /// highlighter's tab, see [Tape.highlighterTab].
+  final lastHighlighterTabIsTape = PlainStow(
+    'lastHighlighterTabIsTape',
+    false,
+    volatile: !_isOnMainIsolate,
+  );
+
+  /// Whether scribbling over strokes with a pen erases them,
+  /// see [ScribbleErase].
+  final scribbleToErase = PlainStow(
+    'scribbleToErase',
+    false,
+    volatile: !_isOnMainIsolate,
+  );
   final hideFingerDrawingToggle = PlainStow(
     'hideFingerDrawingToggle',
     false,
@@ -305,6 +358,13 @@ class Stows {
     volatile: !_isOnMainIsolate,
   );
 
+  /// The [AngleUnit] a ruler's angle and protractor show, by name.
+  final rulerAngleUnit = PlainStow(
+    'rulerAngleUnit',
+    AngleUnit.degrees.name,
+    volatile: !_isOnMainIsolate,
+  );
+
   /// Millimetres (on the page) between a ruler's marks in
   /// [RulerUnit.custom].
   final rulerMarkSpacingMm = PlainStow(
@@ -367,6 +427,23 @@ class Stows {
       lastPencilLineStyle = PlainStow(
         'lastPencilLineStyle',
         LineStyle.solid.name,
+        volatile: !_isOnMainIsolate,
+      );
+
+  /// The opacity (0 to 1) of the last strokes drawn with each pen.
+  final lastFountainPenOpacity = PlainStow(
+        'lastFountainPenOpacity',
+        1.0,
+        volatile: !_isOnMainIsolate,
+      ),
+      lastBallpointPenOpacity = PlainStow(
+        'lastBallpointPenOpacity',
+        1.0,
+        volatile: !_isOnMainIsolate,
+      ),
+      lastPencilOpacity = PlainStow(
+        'lastPencilOpacity',
+        1.0,
         volatile: !_isOnMainIsolate,
       );
   final lastFountainPenColor = PlainStow(

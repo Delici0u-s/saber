@@ -10,6 +10,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:keybinder/keybinder.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:saber/components/canvas/ruler.dart';
+import 'package:saber/components/canvas/zoom_window.dart';
 import 'package:saber/components/theming/adaptive_icon.dart';
 import 'package:saber/components/theming/dynamic_material_app.dart';
 import 'package:saber/components/theming/uni_icon.dart';
@@ -32,6 +33,7 @@ import 'package:saber/data/tools/laser_pointer.dart';
 import 'package:saber/data/tools/pen.dart';
 import 'package:saber/data/tools/pencil.dart';
 import 'package:saber/data/tools/select.dart';
+import 'package:saber/data/tools/tape.dart';
 import 'package:saber/i18n/strings.g.dart';
 
 class Toolbar extends StatefulWidget {
@@ -50,13 +52,19 @@ class Toolbar extends StatefulWidget {
     required this.isRedoPossible,
     required this.toggleFingerDrawing,
     required this.ruler,
+    required this.zoomWindow,
+    required this.toggleZoomWindow,
     required this.pickPhoto,
     required this.paste,
     required this.duplicateSelection,
+    required this.changeSelectionThickness,
+    required this.finishSelectionThickness,
     required this.deleteSelection,
     required this.exportAsSba,
     required this.exportAsPdf,
     required this.exportAsPng,
+    required this.showExportOptions,
+    required this.importPdf,
   });
 
   final bool readOnly;
@@ -79,16 +87,31 @@ class Toolbar extends StatefulWidget {
   /// Shown or hidden by the ruler button.
   final Ruler ruler;
 
+  /// Shown or hidden by [toggleZoomWindow].
+  final ZoomWindow zoomWindow;
+  final VoidCallback toggleZoomWindow;
+
   final VoidCallback pickPhoto;
 
   final VoidCallback paste;
 
   final VoidCallback duplicateSelection;
+
+  /// See [SelectionBar.changeThickness].
+  final ValueChanged<double> changeSelectionThickness;
+  final VoidCallback finishSelectionThickness;
   final VoidCallback deleteSelection;
 
   final Future Function(BuildContext)? exportAsSba;
   final Future Function(BuildContext)? exportAsPdf;
   final Future Function(BuildContext)? exportAsPng;
+
+  /// Whether the export bar is open; its button is in the app bar (see
+  /// [Editor]), or in the toolbar in fullscreen.
+  final ValueNotifier<bool> showExportOptions;
+
+  /// Imports a PDF's pages into the note, or null if PDFs can't be.
+  final VoidCallback? importPdf;
 
   @override
   State<Toolbar> createState() => _ToolbarState();
@@ -98,7 +121,6 @@ class Toolbar extends StatefulWidget {
 }
 
 class _ToolbarState extends State<Toolbar> {
-  ValueNotifier<bool> showExportOptions = ValueNotifier(false);
   ValueNotifier<bool> showColorOptions = ValueNotifier(false);
   ValueNotifier<ToolOptions> toolOptionsType = ValueNotifier(ToolOptions.hide);
 
@@ -112,6 +134,34 @@ class _ToolbarState extends State<Toolbar> {
   }
 
   void _setState() => setState(() {});
+
+  /// A toolbar button, measured after layout: all of them are this long
+  /// along the toolbar ([_buttonLength]).
+  final _measuredButton = GlobalKey();
+  double? _buttonLength;
+
+  /// Whether [groups] of buttons fit in [room], in one row with dividers
+  /// between them. Until a button has been measured, nothing fits (the
+  /// toolbar wraps for a frame, then measures and lays out again).
+  bool _fits(List<List<Widget>> groups, double room) {
+    final buttonLength = _buttonLength;
+    if (buttonLength == null) return false;
+    final buttons = groups.fold(0, (count, group) => count + group.length);
+    return buttons * buttonLength +
+            (groups.length - 1) * _GroupDivider.length <=
+        room;
+  }
+
+  /// Measures [_measuredButton] (after a frame), laying out again if its
+  /// length changed (e.g. the toolbar moved to the side).
+  void _measureButton(Axis axis) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final box = _measuredButton.currentContext?.findRenderObject();
+      if (!mounted || box is! RenderBox || !box.hasSize) return;
+      final length = axis == Axis.horizontal ? box.size.width : box.size.height;
+      if (length != _buttonLength) setState(() => _buttonLength = length);
+    });
+  }
 
   Keybinding? _ctrlF;
   Keybinding? _ctrlE;
@@ -170,7 +220,7 @@ class _ToolbarState extends State<Toolbar> {
   }
 
   void toggleExportBar() {
-    showExportOptions.value = !showExportOptions.value;
+    widget.showExportOptions.value = !widget.showExportOptions.value;
   }
 
   void toggleFullscreen() async {
@@ -211,9 +261,358 @@ class _ToolbarState extends State<Toolbar> {
       }
     }
 
+    final Widget pen = ToolbarIconButton(
+      tooltip: Pen.currentPen.name,
+      selected: widget.currentTool == Pen.currentPen,
+      enabled: !widget.readOnly,
+      onPressed: () {
+        if (widget.currentTool == Pen.currentPen) {
+          if (toolOptionsType.value == .pen) {
+            toolOptionsType.value = .hide;
+          } else {
+            toolOptionsType.value = .pen;
+          }
+        } else {
+          toolOptionsType.value = .hide;
+          widget.setTool(Pen.currentPen);
+        }
+      },
+      padding: buttonPadding,
+      child: UniIcon(Pen.currentPen.icon, size: 16),
+    );
+    final Widget pencil = ToolbarIconButton(
+      tooltip: t.editor.pens.pencil,
+      selected: widget.currentTool == Pencil.currentPencil,
+      enabled: !widget.readOnly,
+      onPressed: () {
+        if (widget.currentTool == Pencil.currentPencil) {
+          if (toolOptionsType.value == .pencil) {
+            toolOptionsType.value = .hide;
+          } else {
+            toolOptionsType.value = .pencil;
+          }
+        } else {
+          toolOptionsType.value = .hide;
+          widget.setTool(Pencil.currentPencil);
+        }
+      },
+      padding: buttonPadding,
+      child: const FaIcon(Pencil.pencilIcon, size: 16),
+    );
+    final Widget highlighter = ToolbarIconButton(
+      tooltip: t.editor.pens.highlighter,
+      selected: widget.currentTool == Tape.highlighterTab,
+      enabled: !widget.readOnly,
+      onPressed: () {
+        if (widget.currentTool == Tape.highlighterTab) {
+          if (toolOptionsType.value == .highlighter) {
+            toolOptionsType.value = .hide;
+          } else {
+            toolOptionsType.value = .highlighter;
+          }
+        } else {
+          toolOptionsType.value = .hide;
+          widget.setTool(Tape.highlighterTab);
+        }
+      },
+      padding: buttonPadding,
+      child: const FaIcon(Highlighter.highlighterIcon, size: 16),
+    );
+    final Widget color = ValueListenableBuilder(
+      valueListenable: showColorOptions,
+      builder: (context, showColorOptions, child) {
+        return ToolbarIconButton(
+          tooltip: t.editor.toolbar.toggleColors,
+          selected: showColorOptions,
+          enabled: !widget.readOnly,
+          onPressed: toggleColorOptions,
+          padding: buttonPadding,
+          child: child!,
+        );
+      },
+      child: currentColor == null
+          ? const Icon(Icons.palette)
+          : Container(
+              width: 18,
+              height: 18,
+              decoration: BoxDecoration(
+                color: currentColor.withInversion(invert).withValues(alpha: 1),
+                shape: .circle,
+                border: Border.all(color: colorScheme.primary, width: 2),
+              ),
+            ),
+    );
+    final Widget select = ToolbarIconButton(
+      tooltip: t.editor.toolbar.select,
+      selected: widget.currentTool is Select,
+      enabled: !widget.readOnly,
+      onPressed: () {
+        if (widget.currentTool is Select) {
+          toolOptionsType.value = toolOptionsType.value == .selectMode
+              ? .hide
+              : .selectMode;
+        } else {
+          toolOptionsType.value = .hide;
+          widget.setTool(Select.current);
+        }
+      },
+      padding: buttonPadding,
+      child: ListenableBuilder(
+        listenable: stows.lastSelectBoxMode,
+        builder: (context, _) => Icon(
+          Select.current.icon,
+          shadows: !widget.readOnly
+              ? [
+                  BoxShadow(
+                    color: colorScheme.primary,
+                    blurRadius: 0.1,
+                    spreadRadius: 10,
+                    blurStyle: BlurStyle.solid,
+                  ),
+                ]
+              : null,
+        ),
+      ),
+    );
+    final Widget eraser = ToolbarIconButton(
+      tooltip: t.editor.toolbar.toggleEraser,
+      selected: widget.currentTool is Eraser,
+      enabled: !widget.readOnly,
+      onPressed: () {
+        // eraser modal
+        if (widget.currentTool is Eraser) {
+          if (toolOptionsType.value == .eraser) {
+            toolOptionsType.value = .hide;
+          } else {
+            toolOptionsType.value = .eraser;
+          }
+        } else {
+          toolOptionsType.value = .hide;
+          widget.setTool(Eraser.currentEraser);
+        }
+      },
+      padding: buttonPadding,
+      child: ListenableBuilder(
+        listenable: stows.lastEraserAreaMode,
+        builder: (context, _) {
+          final iconTheme = IconTheme.of(context);
+          return SvgPicture.asset(
+            Eraser.currentEraser.icon,
+            width: iconTheme.size,
+            height: iconTheme.size,
+            theme: SvgTheme(currentColor: iconTheme.color!),
+          );
+        },
+      ),
+    );
+    final Widget image = ToolbarIconButton(
+      tooltip: t.editor.toolbar.photo,
+      enabled: !widget.readOnly,
+      onPressed: widget.pickPhoto,
+      padding: buttonPadding,
+      child: const AdaptiveIcon(
+        icon: Icons.photo,
+        cupertinoIcon: CupertinoIcons.photo,
+      ),
+    );
+    final Widget text = ToolbarIconButton(
+      tooltip: t.editor.toolbar.text,
+      selected: widget.textEditing,
+      enabled: !widget.readOnly,
+      onPressed: widget.toggleTextEditing,
+      padding: buttonPadding,
+      child: const AdaptiveIcon(
+        icon: Icons.text_fields,
+        cupertinoIcon: CupertinoIcons.text_cursor,
+      ),
+    );
+    final Widget laser = ToolbarIconButton(
+      tooltip: t.editor.pens.laserPointer,
+      selected: widget.currentTool == LaserPointer.currentLaserPointer,
+      enabled: true, // even in read-only mode
+      onPressed: () {
+        toolOptionsType.value = .hide;
+        widget.setTool(LaserPointer.currentLaserPointer);
+      },
+      padding: buttonPadding,
+      child: const Icon(Symbols.stylus_laser_pointer),
+    );
+    final Widget ruler = ListenableBuilder(
+      listenable: widget.ruler,
+      builder: (context, child) => ToolbarIconButton(
+        tooltip: t.editor.toolbar.ruler,
+        selected: widget.ruler.visible,
+        // Shows the ruler, then opens or closes its options.
+        onPressed: () {
+          if (!widget.ruler.visible) {
+            widget.ruler.visible = true;
+            toolOptionsType.value = .ruler;
+          } else {
+            toolOptionsType.value = toolOptionsType.value == .ruler
+                ? .hide
+                : .ruler;
+          }
+        },
+        padding: buttonPadding,
+        child: child!,
+      ),
+      child: const Icon(Icons.straighten),
+    );
+    final Widget zoomWindow = ListenableBuilder(
+      listenable: widget.zoomWindow,
+      builder: (context, child) => ToolbarIconButton(
+        tooltip: t.editor.zoomWindow.title,
+        selected: widget.zoomWindow.visible,
+        enabled: !widget.readOnly,
+        onPressed: widget.toggleZoomWindow,
+        padding: buttonPadding,
+        child: child!,
+      ),
+      child: const Icon(Icons.zoom_in),
+    );
+    final Widget? fingerDrawing = stows.hideFingerDrawingToggle.value
+        ? null
+        : ValueListenableBuilder(
+            valueListenable: stows.editorFingerDrawing,
+            builder: (context, value, child) {
+              return ToolbarIconButton(
+                tooltip: t.editor.toolbar.toggleFingerDrawing,
+                selected: value,
+                enabled: !widget.readOnly,
+                onPressed: widget.toggleFingerDrawing,
+                padding: buttonPadding,
+                child: const Icon(CupertinoIcons.hand_draw),
+              );
+            },
+          );
+    final Widget fullscreen = ToolbarIconButton(
+      tooltip: t.editor.toolbar.fullscreen,
+      selected: DynamicMaterialApp.isFullscreen,
+      enabled: !widget.readOnly,
+      onPressed: toggleFullscreen,
+      padding: buttonPadding,
+      child: AdaptiveIcon(
+        icon: DynamicMaterialApp.isFullscreen
+            ? Icons.fullscreen_exit
+            : Icons.fullscreen,
+        cupertinoIcon: DynamicMaterialApp.isFullscreen
+            ? CupertinoIcons.fullscreen_exit
+            : CupertinoIcons.fullscreen,
+      ),
+    );
+    final Widget undo = ToolbarIconButton(
+      tooltip: t.editor.toolbar.undo,
+      enabled: !widget.readOnly && widget.isUndoPossible,
+      onPressed: widget.undo,
+      padding: buttonPadding,
+      child: const AdaptiveIcon(
+        icon: Icons.undo,
+        cupertinoIcon: CupertinoIcons.arrow_uturn_left,
+      ),
+    );
+    final Widget redo = ToolbarIconButton(
+      tooltip: t.editor.toolbar.redo,
+      enabled: !widget.readOnly && widget.isRedoPossible,
+      onPressed: widget.redo,
+      padding: buttonPadding,
+      child: const AdaptiveIcon(
+        icon: Icons.redo,
+        cupertinoIcon: CupertinoIcons.arrow_uturn_right,
+      ),
+    );
+    final Widget share = ValueListenableBuilder(
+      valueListenable: widget.showExportOptions,
+      builder: (context, showExportOptions, child) {
+        return ToolbarIconButton(
+          tooltip: t.editor.toolbar.export,
+          selected: showExportOptions,
+          enabled: !widget.readOnly,
+          onPressed: toggleExportBar,
+          padding: buttonPadding,
+          child: child!,
+        );
+      },
+      child: const AdaptiveIcon(
+        icon: Icons.share,
+        cupertinoIcon: CupertinoIcons.share,
+      ),
+    );
+    final pdf = ToolbarIconButton(
+      tooltip: t.editor.toolbar.pdf,
+      enabled: !widget.readOnly,
+      onPressed: widget.importPdf,
+      padding: buttonPadding,
+      child: const Icon(Icons.picture_as_pdf),
+    );
+
+    // The groups of buttons (see [ToolOptions.insert] and [ToolOptions.tools]).
+    final writing = [
+      // Measured, to work out how many buttons fit (see [_fits]).
+      KeyedSubtree(key: _measuredButton, child: pen),
+      pencil,
+      highlighter,
+      color,
+      select,
+      eraser,
+    ];
+    final insert = [image, text, pdf];
+    final tools = [ruler, zoomWindow, laser];
+    final view = [
+      ?fingerDrawing,
+      fullscreen,
+      // Share is in the app bar, which fullscreen hides.
+      if (DynamicMaterialApp.isFullscreen) share,
+    ];
+    final edit = [undo, redo];
+    final toolsActive =
+        widget.ruler.visible ||
+        widget.zoomWindow.visible ||
+        widget.currentTool == LaserPointer.currentLaserPointer;
+    Widget groupButton(
+      ToolOptions group,
+      String name,
+      IconData icon, {
+      required bool active,
+    }) => ValueListenableBuilder(
+      valueListenable: toolOptionsType,
+      builder: (context, open, _) => ToolbarIconButton(
+        tooltip: name,
+        selected: open == group,
+        enabled: !widget.readOnly,
+        onPressed: () => toolOptionsType.value = open == group ? .hide : group,
+        padding: buttonPadding,
+        // A dot when something in the group is on.
+        child: Badge(isLabelVisible: active, child: Icon(icon)),
+      ),
+    );
+    final insertGroup = groupButton(
+      .insert,
+      t.editor.toolbar.insert,
+      Icons.add_box_outlined,
+      active: widget.textEditing,
+    );
+    final toolsGroup = groupButton(
+      .tools,
+      t.editor.toolbar.tools,
+      Icons.handyman_outlined,
+      active: toolsActive,
+    );
+    final axis = isToolbarVertical ? Axis.vertical : Axis.horizontal;
+    _measureButton(axis);
+    Widget row(List<List<Widget>> groups) => Flex(
+      direction: axis,
+      mainAxisSize: .min,
+      children: [
+        for (final (index, group) in groups.indexed) ...[
+          if (index > 0) _GroupDivider(axis: axis),
+          ...group,
+        ],
+      ],
+    );
+
     final bars = <Widget>[
       ValueListenableBuilder(
-        valueListenable: showExportOptions,
+        valueListenable: widget.showExportOptions,
         builder: (context, showExportOptions, child) {
           return Collapsible(
             axis: isToolbarVertical
@@ -241,34 +640,109 @@ class _ToolbarState extends State<Toolbar> {
                 : CollapsibleAxis.vertical,
             maintainState: true,
             collapsed: toolOptionsType == .hide,
-            child: switch (toolOptionsType) {
-              .hide => const SizedBox.square(dimension: SizePicker.smallLength),
-              .pen => PenModal(
-                getTool: () => Pen.currentPen,
-                setTool: widget.setTool,
-              ),
-              .highlighter => PenModal(
-                getTool: () => Highlighter.currentHighlighter,
-                setTool: widget.setTool,
-              ),
-              .pencil => PenModal(
-                getTool: () => Pencil.currentPencil,
-                setTool: widget.setTool,
-              ),
-              .eraser => EraserModal(getTool: () => Eraser.currentEraser),
-              .selectMode => SelectModal(setTool: widget.setTool),
-              .select => SelectionBar(
-                duplicateSelection: widget.duplicateSelection,
-                deleteSelection: widget.deleteSelection,
-              ),
-              .ruler => RulerModal(
-                ruler: widget.ruler,
-                hide: () {
-                  widget.ruler.visible = false;
-                  this.toolOptionsType.value = .hide;
+            // Centred, and scrollable where it's wider than the screen
+            // (e.g. the pen options on a phone).
+            child: Center(
+              child: SingleChildScrollView(
+                scrollDirection: isToolbarVertical
+                    ? Axis.vertical
+                    : Axis.horizontal,
+                child: switch (toolOptionsType) {
+                  .hide => const SizedBox.square(
+                    dimension: SizePicker.smallLength,
+                  ),
+                  .pen => PenModal(
+                    getTool: () => Pen.currentPen,
+                    setTool: widget.setTool,
+                  ),
+                  .highlighter => PenModal(
+                    getTool: () => Tape.highlighterTab,
+                    setTool: widget.setTool,
+                  ),
+                  .pencil => PenModal(
+                    getTool: () => Pencil.currentPencil,
+                    setTool: widget.setTool,
+                  ),
+                  .eraser => EraserModal(getTool: () => Eraser.currentEraser),
+                  .selectMode => SelectModal(setTool: widget.setTool),
+                  .select => SelectionBar(
+                    duplicateSelection: widget.duplicateSelection,
+                    changeThickness: widget.changeSelectionThickness,
+                    finishThickness: widget.finishSelectionThickness,
+                    deleteSelection: widget.deleteSelection,
+                  ),
+                  .insert => _GroupBar(
+                    axis: isToolbarVertical ? Axis.vertical : Axis.horizontal,
+                    items: [
+                      (
+                        icon: Icons.photo,
+                        name: t.editor.toolbar.photo,
+                        selected: false,
+                        onPressed: () {
+                          this.toolOptionsType.value = .hide;
+                          widget.pickPhoto();
+                        },
+                      ),
+                      (
+                        icon: Icons.text_fields,
+                        name: t.editor.toolbar.text,
+                        selected: widget.textEditing,
+                        onPressed: widget.toggleTextEditing,
+                      ),
+                      if (widget.importPdf case final importPdf?)
+                        (
+                          icon: Icons.picture_as_pdf,
+                          name: t.editor.toolbar.pdf,
+                          selected: false,
+                          onPressed: () {
+                            this.toolOptionsType.value = .hide;
+                            importPdf();
+                          },
+                        ),
+                    ],
+                  ),
+                  .tools => _GroupBar(
+                    axis: isToolbarVertical ? Axis.vertical : Axis.horizontal,
+                    items: [
+                      (
+                        icon: Icons.straighten,
+                        name: t.editor.toolbar.ruler,
+                        selected: widget.ruler.visible,
+                        // Shows the ruler and its options.
+                        onPressed: () {
+                          widget.ruler.visible = true;
+                          this.toolOptionsType.value = .ruler;
+                        },
+                      ),
+                      (
+                        icon: Icons.zoom_in,
+                        name: t.editor.zoomWindow.title,
+                        selected: widget.zoomWindow.visible,
+                        onPressed: widget.toggleZoomWindow,
+                      ),
+                      (
+                        icon: Symbols.stylus_laser_pointer,
+                        name: t.editor.pens.laserPointer,
+                        selected:
+                            widget.currentTool ==
+                            LaserPointer.currentLaserPointer,
+                        onPressed: () {
+                          this.toolOptionsType.value = .hide;
+                          widget.setTool(LaserPointer.currentLaserPointer);
+                        },
+                      ),
+                    ],
+                  ),
+                  .ruler => RulerModal(
+                    ruler: widget.ruler,
+                    hide: () {
+                      widget.ruler.visible = false;
+                      this.toolOptionsType.value = .hide;
+                    },
+                  ),
                 },
               ),
-            },
+            ),
           );
         },
       ),
@@ -343,286 +817,36 @@ class _ToolbarState extends State<Toolbar> {
       Center(
         child: Padding(
           padding: const .all(8),
-          child: Wrap(
-            direction: isToolbarVertical ? Axis.vertical : Axis.horizontal,
-            alignment: WrapAlignment.center,
-            runSpacing: 8,
-            children: [
-              ToolbarIconButton(
-                tooltip: Pen.currentPen.name,
-                selected: widget.currentTool == Pen.currentPen,
-                enabled: !widget.readOnly,
-                onPressed: () {
-                  if (widget.currentTool == Pen.currentPen) {
-                    if (toolOptionsType.value == .pen) {
-                      toolOptionsType.value = .hide;
-                    } else {
-                      toolOptionsType.value = .pen;
-                    }
-                  } else {
-                    toolOptionsType.value = .hide;
-                    widget.setTool(Pen.currentPen);
-                  }
-                },
-                padding: buttonPadding,
-                child: UniIcon(Pen.currentPen.icon, size: 16),
-              ),
-              ToolbarIconButton(
-                tooltip: t.editor.pens.pencil,
-                selected: widget.currentTool == Pencil.currentPencil,
-                enabled: !widget.readOnly,
-                onPressed: () {
-                  if (widget.currentTool == Pencil.currentPencil) {
-                    if (toolOptionsType.value == .pencil) {
-                      toolOptionsType.value = .hide;
-                    } else {
-                      toolOptionsType.value = .pencil;
-                    }
-                  } else {
-                    toolOptionsType.value = .hide;
-                    widget.setTool(Pencil.currentPencil);
-                  }
-                },
-                padding: buttonPadding,
-                child: const FaIcon(Pencil.pencilIcon, size: 16),
-              ),
-              ToolbarIconButton(
-                tooltip: t.editor.pens.highlighter,
-                selected: widget.currentTool == Highlighter.currentHighlighter,
-                enabled: !widget.readOnly,
-                onPressed: () {
-                  if (widget.currentTool == Highlighter.currentHighlighter) {
-                    if (toolOptionsType.value == .highlighter) {
-                      toolOptionsType.value = .hide;
-                    } else {
-                      toolOptionsType.value = .highlighter;
-                    }
-                  } else {
-                    toolOptionsType.value = .hide;
-                    widget.setTool(Highlighter.currentHighlighter);
-                  }
-                },
-                padding: buttonPadding,
-                child: const FaIcon(Highlighter.highlighterIcon, size: 16),
-              ),
-              ValueListenableBuilder(
-                valueListenable: showColorOptions,
-                builder: (context, showColorOptions, child) {
-                  return ToolbarIconButton(
-                    tooltip: t.editor.toolbar.toggleColors,
-                    selected: showColorOptions,
-                    enabled: !widget.readOnly,
-                    onPressed: toggleColorOptions,
-                    padding: buttonPadding,
-                    child: child!,
-                  );
-                },
-                child: currentColor == null
-                    ? const Icon(Icons.palette)
-                    : Container(
-                        width: 18,
-                        height: 18,
-                        decoration: BoxDecoration(
-                          color: currentColor
-                              .withInversion(invert)
-                              .withValues(alpha: 1),
-                          shape: .circle,
-                          border: Border.all(
-                            color: colorScheme.primary,
-                            width: 2,
-                          ),
-                        ),
-                      ),
-              ),
-              ToolbarIconButton(
-                tooltip: t.editor.toolbar.select,
-                selected: widget.currentTool is Select,
-                enabled: !widget.readOnly,
-                onPressed: () {
-                  if (widget.currentTool is Select) {
-                    toolOptionsType.value = toolOptionsType.value == .selectMode
-                        ? .hide
-                        : .selectMode;
-                  } else {
-                    toolOptionsType.value = .hide;
-                    widget.setTool(Select.current);
-                  }
-                },
-                padding: buttonPadding,
-                child: ListenableBuilder(
-                  listenable: stows.lastSelectBoxMode,
-                  builder: (context, _) => Icon(
-                    Select.current.icon,
-                    shadows: !widget.readOnly
-                        ? [
-                            BoxShadow(
-                              color: colorScheme.primary,
-                              blurRadius: 0.1,
-                              spreadRadius: 10,
-                              blurStyle: BlurStyle.solid,
-                            ),
-                          ]
-                        : null,
-                  ),
-                ),
-              ),
-              ToolbarIconButton(
-                tooltip: t.editor.pens.laserPointer,
-                selected:
-                    widget.currentTool == LaserPointer.currentLaserPointer,
-                enabled: true, // even in read-only mode
-                onPressed: () {
-                  toolOptionsType.value = .hide;
-                  widget.setTool(LaserPointer.currentLaserPointer);
-                },
-                padding: buttonPadding,
-                child: const Icon(Symbols.stylus_laser_pointer),
-              ),
-              ToolbarIconButton(
-                tooltip: t.editor.toolbar.toggleEraser,
-                selected: widget.currentTool is Eraser,
-                enabled: !widget.readOnly,
-                onPressed: () {
-                  // eraser modal
-                  if (widget.currentTool is Eraser) {
-                    if (toolOptionsType.value == .eraser) {
-                      toolOptionsType.value = .hide;
-                    } else {
-                      toolOptionsType.value = .eraser;
-                    }
-                  } else {
-                    toolOptionsType.value = .hide;
-                    widget.setTool(Eraser.currentEraser);
-                  }
-                },
-                padding: buttonPadding,
-                child: ListenableBuilder(
-                  listenable: stows.lastEraserAreaMode,
-                  builder: (context, _) {
-                    final iconTheme = IconTheme.of(context);
-                    return SvgPicture.asset(
-                      Eraser.currentEraser.icon,
-                      width: iconTheme.size,
-                      height: iconTheme.size,
-                      theme: SvgTheme(currentColor: iconTheme.color!),
-                    );
-                  },
-                ),
-              ),
-              ToolbarIconButton(
-                tooltip: t.editor.toolbar.photo,
-                enabled: !widget.readOnly,
-                onPressed: widget.pickPhoto,
-                padding: buttonPadding,
-                child: const AdaptiveIcon(
-                  icon: Icons.photo,
-                  cupertinoIcon: CupertinoIcons.photo,
-                ),
-              ),
-              ToolbarIconButton(
-                tooltip: t.editor.toolbar.text,
-                selected: widget.textEditing,
-                enabled: !widget.readOnly,
-                onPressed: widget.toggleTextEditing,
-                padding: buttonPadding,
-                child: const AdaptiveIcon(
-                  icon: Icons.text_fields,
-                  cupertinoIcon: CupertinoIcons.text_cursor,
-                ),
-              ),
-              if (!stows.hideFingerDrawingToggle.value)
-                ValueListenableBuilder(
-                  valueListenable: stows.editorFingerDrawing,
-                  builder: (context, value, child) {
-                    return ToolbarIconButton(
-                      tooltip: t.editor.toolbar.toggleFingerDrawing,
-                      selected: value,
-                      enabled: !widget.readOnly,
-                      onPressed: widget.toggleFingerDrawing,
-                      padding: buttonPadding,
-                      child: const Icon(CupertinoIcons.hand_draw),
-                    );
-                  },
-                ),
-              ListenableBuilder(
-                listenable: widget.ruler,
-                builder: (context, child) => ToolbarIconButton(
-                  tooltip: t.editor.toolbar.ruler,
-                  selected: widget.ruler.visible,
-                  // Shows the ruler, then opens or closes its options.
-                  onPressed: () {
-                    if (!widget.ruler.visible) {
-                      widget.ruler.visible = true;
-                      toolOptionsType.value = .ruler;
-                    } else {
-                      toolOptionsType.value = toolOptionsType.value == .ruler
-                          ? .hide
-                          : .ruler;
-                    }
-                  },
-                  padding: buttonPadding,
-                  child: child!,
-                ),
-                child: const Icon(Icons.straighten),
-              ),
-              ToolbarIconButton(
-                tooltip: t.editor.toolbar.fullscreen,
-                selected: DynamicMaterialApp.isFullscreen,
-                enabled: !widget.readOnly,
-                onPressed: toggleFullscreen,
-                padding: buttonPadding,
-                child: AdaptiveIcon(
-                  icon: DynamicMaterialApp.isFullscreen
-                      ? Icons.fullscreen_exit
-                      : Icons.fullscreen,
-                  cupertinoIcon: DynamicMaterialApp.isFullscreen
-                      ? CupertinoIcons.fullscreen_exit
-                      : CupertinoIcons.fullscreen,
-                ),
-              ),
-              Wrap(
-                direction: isToolbarVertical ? Axis.vertical : Axis.horizontal,
-                children: [
-                  ToolbarIconButton(
-                    tooltip: t.editor.toolbar.undo,
-                    enabled: !widget.readOnly && widget.isUndoPossible,
-                    onPressed: widget.undo,
-                    padding: buttonPadding,
-                    child: const AdaptiveIcon(
-                      icon: Icons.undo,
-                      cupertinoIcon: CupertinoIcons.arrow_uturn_left,
-                    ),
-                  ),
-                  ToolbarIconButton(
-                    tooltip: t.editor.toolbar.redo,
-                    enabled: !widget.readOnly && widget.isRedoPossible,
-                    onPressed: widget.redo,
-                    padding: buttonPadding,
-                    child: const AdaptiveIcon(
-                      icon: Icons.redo,
-                      cupertinoIcon: CupertinoIcons.arrow_uturn_right,
-                    ),
-                  ),
-                ],
-              ),
-              ValueListenableBuilder(
-                valueListenable: showExportOptions,
-                builder: (context, showExportOptions, child) {
-                  return ToolbarIconButton(
-                    tooltip: t.editor.toolbar.export,
-                    selected: showExportOptions,
-                    enabled: !widget.readOnly,
-                    onPressed: toggleExportBar,
-                    padding: buttonPadding,
-                    child: child!,
-                  );
-                },
-                child: const AdaptiveIcon(
-                  icon: Icons.share,
-                  cupertinoIcon: CupertinoIcons.share,
-                ),
-              ),
-            ],
+          // Groups inline when there's room, collapsed into a button when
+          // there isn't (Tools first), and wrapping if even that's too wide.
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final room = axis == Axis.horizontal
+                  ? constraints.maxWidth
+                  : constraints.maxHeight;
+              final allInline = [writing, insert, tools, view, edit];
+              final toolsCollapsed = [
+                writing,
+                insert,
+                [toolsGroup],
+                view,
+                edit,
+              ];
+              final bothCollapsed = [
+                [...writing, insertGroup, toolsGroup],
+                view,
+                edit,
+              ];
+              for (final groups in [allInline, toolsCollapsed, bothCollapsed]) {
+                if (_fits(groups, room)) return row(groups);
+              }
+              return Wrap(
+                direction: axis,
+                alignment: WrapAlignment.center,
+                runSpacing: 8,
+                children: [for (final group in bothCollapsed) ...group],
+              );
+            },
           ),
         ),
       ),
@@ -656,6 +880,10 @@ class _ToolbarState extends State<Toolbar> {
 
 enum ToolOptions {
   hide,
+
+  /// The buttons of a group collapsed into one (see [_GroupBar]).
+  insert,
+  tools,
   pen,
   highlighter,
   pencil,
@@ -663,4 +891,73 @@ enum ToolOptions {
   selectMode,
   select,
   ruler,
+}
+
+/// A thin line between groups of toolbar buttons, as long as a button.
+class _GroupDivider extends StatelessWidget {
+  const new({required this.axis});
+
+  final Axis axis;
+
+  /// The space on either side of the line.
+  static const _gap = ToolbarIconButton.innerPadding / 2;
+
+  /// How much room it takes along the toolbar.
+  static const length = 2 * _gap + 1;
+
+  @override
+  Widget build(BuildContext context) {
+    const length =
+        ToolbarIconButton.iconSize + 2 * ToolbarIconButton.innerPadding;
+    final horizontal = axis == Axis.horizontal;
+    return Padding(
+      padding: horizontal
+          ? const .symmetric(horizontal: _gap)
+          : const .symmetric(vertical: _gap),
+      child: SizedBox(
+        width: horizontal ? 1 : length,
+        height: horizontal ? length : 1,
+        child: ColoredBox(color: ColorScheme.of(context).outlineVariant),
+      ),
+    );
+  }
+}
+
+/// The buttons of a collapsed group (e.g. Insert), each with its name, so
+/// nothing has to be guessed from an icon.
+class _GroupBar extends StatelessWidget {
+  const new({required this.axis, required this.items});
+
+  final Axis axis;
+  final List<
+    ({IconData icon, String name, bool selected, VoidCallback onPressed})
+  >
+  items;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const .all(ToolbarIconButton.innerPadding / 2),
+      child: Flex(
+        direction: axis,
+        mainAxisSize: .min,
+        spacing: ToolbarIconButton.innerPadding,
+        children: [
+          for (final item in items)
+            if (item.selected)
+              FilledButton.tonalIcon(
+                onPressed: item.onPressed,
+                icon: Icon(item.icon),
+                label: Text(item.name),
+              )
+            else
+              TextButton.icon(
+                onPressed: item.onPressed,
+                icon: Icon(item.icon),
+                label: Text(item.name),
+              ),
+        ],
+      ),
+    );
+  }
 }

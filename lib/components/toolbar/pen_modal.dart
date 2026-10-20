@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:saber/components/toolbar/line_style_picker.dart';
+import 'package:saber/components/toolbar/opacity_picker.dart';
 import 'package:saber/components/toolbar/size_picker.dart';
+import 'package:saber/components/toolbar/tool_mode_button.dart';
 import 'package:saber/data/extensions/axis_extensions.dart';
 import 'package:saber/data/prefs.dart';
 import 'package:saber/data/tools/_tool.dart';
@@ -10,6 +12,7 @@ import 'package:saber/data/tools/highlighter.dart';
 import 'package:saber/data/tools/pen.dart';
 import 'package:saber/data/tools/pencil.dart';
 import 'package:saber/data/tools/shape_pen.dart';
+import 'package:saber/data/tools/tape.dart';
 import 'package:saber/i18n/strings.g.dart';
 
 class PenModal extends StatefulWidget {
@@ -43,7 +46,30 @@ class _PenModalState extends State<PenModal> {
           const SizedBox.square(dimension: 8),
           LineStylePicker(axis: axis, pen: currentPen),
         ],
-        if (currentPen is! Highlighter && currentPen is! Pencil) ...[
+        if (currentPen.opacityStow != null) ...[
+          const SizedBox.square(dimension: 8),
+          OpacityPicker(axis: axis, pen: currentPen),
+        ],
+        // The highlighter's tab also draws tape.
+        if (currentPen is Highlighter || currentPen is Tape) ...[
+          const SizedBox.square(dimension: 8),
+          for (final (pen, icon) in [
+            (Highlighter.currentHighlighter, Highlighter.highlighterIcon),
+            (Tape.currentTape, Tape.tapeIcon),
+          ])
+            ToolModeButton(
+              selected: currentPen == pen,
+              tooltip: pen.name,
+              onPressed: () => setState(() {
+                stows.lastHighlighterTabIsTape.value = pen is Tape;
+                widget.setTool(pen);
+              }),
+              icon: FaIcon(icon),
+            ),
+        ],
+        if (currentPen is! Highlighter &&
+            currentPen is! Pencil &&
+            currentPen is! Tape) ...[
           const SizedBox.square(dimension: 8),
           IconButton(
             onPressed: () => setState(() {

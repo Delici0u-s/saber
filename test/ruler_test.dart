@@ -131,9 +131,59 @@ void main() {
             expect(outline.grabs(.zero, snapDistance), isTrue);
           });
 
+          test('a pen goes round outer corners and stops at inner ones', () {
+            const gap = 3.0;
+            final sides = outline.sides.toList();
+            for (final (i, side) in sides.indexed) {
+              final next = sides[(i + 1) % sides.length];
+              final corner = side.end;
+              final a = side.end - side.start, b = next.end - next.start;
+              final outer = a.dx * b.dy - a.dy * b.dx > 0;
+              if (outer) {
+                // Pushed past the corner, diagonally away from both sides.
+                final past =
+                    corner + (side.outward + next.outward) * (gap * 10);
+                expect(
+                  (side.project(past, gap: gap) - corner).distance,
+                  closeTo(gap, 1e-9),
+                );
+              } else {
+                // Against the side, right at the corner.
+                final projected = side.project(
+                  corner + side.outward * gap,
+                  gap: gap,
+                );
+                expect(next.distanceTo(projected), closeTo(gap, 1e-9));
+                expect(side.distanceTo(projected), closeTo(gap, 1e-9));
+              }
+            }
+          });
+
+          if (shape == .trySquare) {
+            test('measures the inner sides from the inner corner', () {
+              final inner = outline.corners[3];
+              final innerScales = outline.scales.where(
+                (scale) => scale.origin == inner,
+              );
+              expect(innerScales, hasLength(2));
+              for (final scale in innerScales) {
+                final end = scale.origin + scale.direction * scale.to;
+                expect(outline.corners, contains(end));
+                expect(outline.path.contains(inner + scale.inward), isTrue);
+              }
+            });
+          }
+
           if (outline.protractor case final protractor?) {
             test('the protractor fits inside, away from the ring', () {
               expect(protractor.radius, greaterThan(ringOuter));
+              // Its 90° line runs into the ruler.
+              expect(
+                outline.path.contains(
+                  protractor.center + protractor.inward * protractor.radius,
+                ),
+                isTrue,
+              );
               // The short sides; the long one goes through its centre.
               for (final side in outline.sides.skip(1)) {
                 expect(
@@ -170,6 +220,31 @@ void main() {
       expect(edge.project(const Offset(500, 400)), const Offset(100, 100));
       expect(edge.project(const Offset(-50, -80)), Offset.zero);
     });
+
+    test('finds where a ray crosses it', () {
+      final hit = edge.intersect(const Offset(0, 100), const Offset(1, -1))!;
+      expect((hit - const Offset(50, 50)).distance, closeTo(0, 1e-9));
+      // Pointing away, past its ends and along it.
+      expect(edge.intersect(const Offset(0, 100), const Offset(-1, 1)), isNull);
+      expect(edge.intersect(const Offset(0, 300), const Offset(1, -1)), isNull);
+      expect(
+        edge.intersect(const Offset(-10, -10), const Offset(1, 1)),
+        isNull,
+      );
+    });
+  });
+
+  group('AngleUnit', () {
+    test('shows degrees, or radians as fractions of π where it can', () {
+      expect(AngleUnit.degrees.format(45), '45°');
+      expect(AngleUnit.radians.format(0), '0');
+      expect(AngleUnit.radians.format(45), 'π/4');
+      expect(AngleUnit.radians.format(180), 'π');
+      expect(AngleUnit.radians.format(270), '3π/2');
+      expect(AngleUnit.radians.format(330), '11π/6');
+      expect(AngleUnit.radians.format(1), '0.02');
+      expect(AngleUnit.radians.format(359), '6.27');
+    });
   });
 
   group('RulerUnit', () {
@@ -193,10 +268,15 @@ void main() {
 
     test('rotating snaps to nearby multiples of 15°', () {
       final ruler = Ruler();
-      ruler.rotateTo(31 * pi / 180);
+      ruler.rotateTo(30.6 * pi / 180);
       expect(ruler.angle, closeTo(30 * pi / 180, 1e-9));
-      ruler.rotateTo(37 * pi / 180);
+      ruler.rotateTo(37.3 * pi / 180);
       expect(ruler.angle, closeTo(37 * pi / 180, 1e-9));
+      // The angles next to a snap angle, either way round.
+      for (final degrees in [1.0, -1.0, 359.0, 14.0, 16.0]) {
+        ruler.rotateTo(degrees * pi / 180);
+        expect(ruler.angle, closeTo(degrees * pi / 180, 1e-9));
+      }
       ruler.rotateTo(31 * pi / 180, snap: false);
       expect(ruler.angle, closeTo(31 * pi / 180, 1e-9));
     });
@@ -290,6 +370,7 @@ void main() {
       stows.rulerMarkSpacingMm.value = 1;
       stows.rulerSnapDistance.value = 16;
       stows.rulerUnit.value = RulerUnit.mm.name;
+      stows.rulerAngleUnit.value = AngleUnit.degrees.name;
       ruler = Ruler()..visible = true;
       canvasDowns = [];
       pixelsPerMm = 4;
@@ -364,6 +445,17 @@ void main() {
       expect(ruler.displayedDegrees, 179);
     });
 
+    testWidgets('stays inside its overlay', (tester) async {
+      await pumpOverlay(tester);
+      expect(
+        find.ancestor(
+          of: find.byKey(ruler.overlayKey),
+          matching: find.byType(ClipRect),
+        ),
+        findsOneWidget,
+      );
+    });
+
     testWidgets('hidden, it lets everything through', (tester) async {
       await pumpOverlay(tester);
       ruler.visible = false;
@@ -405,6 +497,9 @@ void main() {
               stows.lastRulerShape.value = shape.name;
               stows.rulerUnit.value = unit.name;
               stows.rulerMarkSpacingMm.value = spacing;
+              // Every other one in radians.
+              stows.rulerAngleUnit.value =
+                  AngleUnit.values[zoom.round() % AngleUnit.values.length].name;
               pixelsPerMm = zoom;
               ruler.rotateTo(0.4);
               await pumpOverlay(tester, overlay);

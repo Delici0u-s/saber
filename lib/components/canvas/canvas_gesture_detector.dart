@@ -15,6 +15,7 @@ import 'package:saber/data/extensions/change_notifier_extensions.dart';
 import 'package:saber/data/extensions/matrix4_extensions.dart';
 import 'package:saber/data/prefs.dart';
 import 'package:saber/data/screen_density.dart';
+import 'package:saber/data/tools/double_tap_to_erase.dart';
 import 'package:saber/pages/editor/editor.dart';
 import 'package:vector_math/vector_math_64.dart';
 
@@ -39,6 +40,9 @@ class CanvasGestureDetector extends StatefulWidget {
     required this.placeholderPageBuilder,
     required this.isTextEditing,
     required this.ruler,
+    this.lockPosition = false,
+    this.onTap,
+    this.onDoubleTap,
     TransformationController? transformationController,
   }) : _transformationController =
            transformationController ?? TransformationController();
@@ -73,10 +77,39 @@ class CanvasGestureDetector extends StatefulWidget {
   /// Shown over the canvas when visible.
   final Ruler ruler;
 
+  /// Whether the canvas can't be scrolled or zoomed (e.g. a note side by
+  /// side, kept still for reference).
+  final bool lockPosition;
+
+  /// Called when the canvas is tapped (a pointer put down and lifted
+  /// without moving), with the kind of pointer and where (globally).
+  final void Function(PointerDeviceKind kind, Offset position)? onTap;
+
+  /// Called when the canvas is tapped twice quickly at the same spot, with
+  /// the kind of pointer (e.g. a finger or a pen), where (globally) and when
+  /// the first tap started (as pointer event time stamps).
+  final void Function(PointerDeviceKind kind, Offset position, Duration since)?
+  onDoubleTap;
+
   late final TransformationController _transformationController;
 
   @override
   State<CanvasGestureDetector> createState() => CanvasGestureDetectorState();
+
+  /// The pressure of [event] from 0 to 1, or null if it isn't a stylus or
+  /// reports no pressure.
+  static double? pressureOf(PointerEvent event) {
+    final isStylus =
+        event.kind == PointerDeviceKind.stylus ||
+        event.kind == PointerDeviceKind.invertedStylus;
+    // Detected as stylus, but no pressure values
+    if (!isStylus || event.pressureMin == event.pressureMax) return null;
+    return _inverseLerp(
+      event.pressure,
+      min: event.pressureMin,
+      max: event.pressureMax,
+    );
+  }
 
   static const kMinScale = 0.3;
   static const kMaxScale = 10.0;
@@ -467,7 +500,65 @@ class CanvasGestureDetectorState extends State<CanvasGestureDetector> {
         transformation;
   }
 
+  /// The pointer down that may become a tap, and the last tap: to recognise
+  /// double taps (see [CanvasGestureDetector.onDoubleTap]).
+  ({int pointer, Offset position, Duration time})? _tapDown;
+  ({Offset position, Duration downTime, Duration time, PointerDeviceKind kind})?
+  _lastTap;
+
+  void _trackTap(PointerEvent event) {
+    switch (event) {
+      case PointerDownEvent():
+        // A second finger (e.g. pinching) isn't a tap.
+        if (_tapDown != null) {
+          _tapDown = null;
+          _lastTap = null;
+          return;
+        }
+        _tapDown = (
+          pointer: event.pointer,
+          position: event.position,
+          time: event.timeStamp,
+        );
+      case PointerMoveEvent():
+        final down = _tapDown;
+        if (down?.pointer == event.pointer &&
+            (event.position - down!.position).distance > kTouchSlop) {
+          _tapDown = null;
+        }
+      case PointerUpEvent():
+        final down = _tapDown;
+        _tapDown = null;
+        if (down == null ||
+            down.pointer != event.pointer ||
+            event.timeStamp - down.time > kLongPressTimeout) {
+          return;
+        }
+        widget.onTap?.call(event.kind, event.position);
+        final last = _lastTap;
+        if (last != null &&
+            last.kind == event.kind &&
+            event.timeStamp - last.time <= kDoubleTapTimeout &&
+            (event.position - last.position).distance <=
+                DoubleTapToErase.slop(event.kind)) {
+          _lastTap = null;
+          widget.onDoubleTap?.call(event.kind, event.position, last.downTime);
+        } else {
+          _lastTap = (
+            position: event.position,
+            downTime: down.time,
+            time: event.timeStamp,
+            kind: event.kind,
+          );
+        }
+      case PointerCancelEvent():
+        _tapDown = null;
+      default:
+    }
+  }
+
   void _listenerPointerEvent(PointerEvent event) {
+    _trackTap(event);
     final isStylus =
         event.kind == PointerDeviceKind.stylus ||
         event.kind == PointerDeviceKind.invertedStylus;
@@ -475,22 +566,10 @@ class CanvasGestureDetectorState extends State<CanvasGestureDetector> {
       _detectStylusButton(event);
     }
 
-    final double? pressure;
-    if (isStylus) {
-      if (event.pressureMin != event.pressureMax) {
-        pressure = _inverseLerp(
-          event.pressure,
-          min: event.pressureMin,
-          max: event.pressureMax,
-        );
-      } else {
-        // Detected as stylus, but no pressure values
-        pressure = null;
-      }
-    } else {
-      pressure = null;
-    }
-    widget.updatePointerData(event.kind, pressure);
+    widget.updatePointerData(
+      event.kind,
+      CanvasGestureDetector.pressureOf(event),
+    );
 
     if (isStylus &&
         stows.autoDisableFingerDrawingWhenStylusDetected.value &&
@@ -526,6 +605,7 @@ class CanvasGestureDetectorState extends State<CanvasGestureDetector> {
   }
 
   void _listenerPointerUpEvent(PointerEvent event) {
+    _trackTap(event);
     widget.updatePointerData(event.kind, null);
     if (stylusButtonWasPressed) {
       stylusButtonWasPressed = false;
@@ -543,16 +623,20 @@ class CanvasGestureDetectorState extends State<CanvasGestureDetector> {
           onPointerDown: _listenerPointerEvent,
           onPointerMove: _listenerPointerEvent,
           onPointerUp: _listenerPointerUpEvent,
+          onPointerCancel: _trackTap,
           onPointerHover: _listenerPointerHoverEvent,
           child: GestureDetector(
             child: LayoutBuilder(
               builder: (BuildContext context, BoxConstraints containerBounds) {
                 this.containerBounds = containerBounds;
 
+                final lockedScale = widget.lockPosition
+                    ? widget._transformationController.value.approxScale
+                    : zoomLockedValue;
                 return InteractiveCanvasViewer.builder(
-                  minScale: zoomLockedValue ?? CanvasGestureDetector.kMinScale,
-                  maxScale: zoomLockedValue ?? CanvasGestureDetector.kMaxScale,
-                  panEnabled: !singleFingerPanLock,
+                  minScale: lockedScale ?? CanvasGestureDetector.kMinScale,
+                  maxScale: lockedScale ?? CanvasGestureDetector.kMaxScale,
+                  panEnabled: !singleFingerPanLock && !widget.lockPosition,
                   panAxis: axisAlignedPanLock ? PanAxis.aligned : PanAxis.free,
 
                   // Smoother scrolling fling gesture than the default

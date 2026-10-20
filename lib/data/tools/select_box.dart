@@ -29,6 +29,7 @@ class SelectBox extends Select {
   void unselect() {
     doneSelecting = false;
     selectResult.pageIndex = -1;
+    selectResult.box = null;
   }
 
   @override
