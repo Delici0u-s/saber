@@ -1,125 +1,90 @@
-# Handoff (2026-10-19, paused here; continue on the desktop)
+# Handoff (2026-10-20, paused here; continue in a new chat)
 
-Where things stand, what's left, and how to set up a new machine.
+Where things stand, what's left, and how to set up a new machine. The feature plans (with every
+decision you made) are in `FEATURE_PLANS.md`; read it together with this.
 
 ## State
 
-| Repo (your forks) | Branch | Commit | Pushed? | What |
-|---|---|---|---|---|
-| `Delici0u-s/saber` | `main` (only branch; `personal` deleted 2026-10-19) | see `git log` | yes | Fork features + lock on library `8808f44` |
-| `Delici0u-s/perfect-freehand-dart` | `personal` | `8808f44` | yes | PR + all tap fixes |
-| same | `fix/stationary-dots` | `92c70b3` | yes | PR [#27](https://github.com/steveruizok/perfect-freehand-dart/pull/27) |
+All work is committed: the features in `8a432da`, the README, this handoff and
+`FEATURE_PLANS.md` in the `personal:` commit after it. You tested everything on the PC and the
+tablet ("all things work nicely").
 
-Saber gets `perfect_freehand` from the fork's **`personal`** branch via `dependency_overrides`
-in `pubspec.yaml`; `pubspec.lock` pins the commit (`flutter pub upgrade perfect_freehand` bumps it).
-This does **not** switch to upstream by itself: see "When the PR is released" below.
+- `main` of `Delici0u-s/saber` is the only branch. Saber gets `perfect_freehand` from the fork's
+  `personal` branch via `dependency_overrides` in `pubspec.yaml`; `pubspec.lock` pins the commit.
+- Untracked and not for committing: `test/failures/` (output of failing goldens),
+  `INVESTIGATION_NOTES.md` (your notes).
+- Checks at the end of the session: the full suite fails only the 20 golden tests that also fail
+  on unmodified `main` outside Docker (see *Gotchas*), `flutter analyze` shows the usual 16 infos,
+  `dart format` is clean.
 
-### PR #27 commits
+## How we work (your preferences)
 
-| Commit | What |
-|---|---|
-| `79a500a` | Dots for stationary points with varying pressure (original PR) |
-| `640c910` | Test: stationary points golden |
-| `8e380a6` | A tap's dot sized by the highest pressure; points within `options.size` of the first count as one tap (squash of `bf82a2f`, `492156a`, `d6ef51f` on `personal`) |
-| `92c70b3` | **Lone point drawn as a round dot** (= `8808f44` on `personal`) |
+- **Plan features before building** (`FEATURE_PLANS.md`): how other apps do it, the design, options
+  and questions; build only after your OK. Bug fixes and requested tweaks go straight to code.
+- **Look before reporting:** UI changes were checked in test renders (see *Gotchas*), on phone and
+  desktop sizes, and with tests through the real editor.
+- Your global rules (`~/.claude/CLAUDE.md`): no hardcoding (sizes from content, one home per value,
+  test at extremes), and ask before anything that can lose data (installs over other builds!).
 
-After `92c70b3`, `lib/` and `test/` on `fix/stationary-dots` are identical to `personal`.
+## Built (2026-10-19 evening and 2026-10-20, `8a432da`)
 
-What the bugs were:
-- **Pressure**: a real tap drifts by a fraction of a pixel. Then the middle points were skipped
-  and the dot used the *last* (lift-off, lightest) point's pressure. Verified on the tablet.
-- **Stretched dots** (seen on the laptop with a thin pen): `getStrokePoints` added a helper
-  point 1pt right and down from a lone point (upstream behaviour, also in the JS library), so every
-  dot was a tiny diagonal stroke, √2 ≈ 1.4pt longer along ↘. Fix: drop the helper point;
-  `getStrokeOutlinePoints` already draws a lone point as a round dot. Goldens changed (dots only):
-  `one_point`, `two_equal_points`, `stationary_points`, `short_strokes`. Verified in the app on
-  the laptop (2026-10-19).
+| Feature | What it does | Main code |
+|---|---|---|
+| Ruler fixes | Corners: strokes go round outer corners, stop at inner ones; labels fit by their box; clipped to the canvas; 1° steps (15° catch within 0.75°); degrees/radians; Geodreieck after the mizi drawing (edge marks along their angle) | `components/canvas/ruler.dart` |
+| Sync fix | Downloads wait for the write; a failed reload keeps the open note | `nextcloud/saber_syncer.dart`, `EditorState._reloadInPlace` |
+| Search | Search button on *Recent* and *Browse*: notes by name/folder, with thumbnails | `components/home/search_notes_button.dart` |
+| Line styles in shapes | Hold to shape keeps dashes/dots; preview in the style | `tools/pen.dart` (`toShape`, `outlineStroke`), `_canvas_painter.dart` |
+| Opacity | Slider per pen (fountain, ballpoint, pencil), saved as colour alpha | `toolbar/opacity_picker.dart` |
+| Scribble to erase | Setting, off by default; pens and pencil only | `tools/scribble_erase.dart` |
+| Lasso actions | Box with corner/side/rotate handles, thickness slider, one undo step each | `editor/selection_transform.dart`, `_SelectionChange` in `editor.dart` |
+| Zoom window | Panel mirroring a box on the page; auto-advance; view follows | `components/canvas/zoom_window.dart` |
+| Side by side | Second pane: note (writable, lockable, own undo) or PDF | `pages/editor/side_by_side.dart`, `EditorEmbedding` |
+| Double-tap to erase | Setting: off / finger or mouse (default) / pen / all; takes back the taps' dots | `tools/double_tap_to_erase.dart`, `_onDoubleTap` |
+| Tape | Highlighter-tab mode; tap to reveal/hide; not saved revealed; hold to shape | `tools/tape.dart`, `paintTape` |
+| Toolbar | Groups *Insert* (image, text, PDF) and *Tools* (ruler, zoom window, laser): inline when they fit, else a button opening named rows; share in the app bar | `toolbar/toolbar.dart` |
+| PDF pages | Choose pages when importing (thumbnails, all/none, ranges) | `pages/editor/pdf_page_chooser.dart` |
 
-All checks pass on both branches: 64 tests, `dart format`.
+Also fixed on the way: selection handles, zoom-box handles and the eraser outline were sized by
+zoom only (2.5× too small on phones); duplicated images weren't offset; the pen tab overflowed on
+phones (tool options now scroll); the stroke being drawn, selections, the shape preview and
+Ctrl+Z are tied to their own editor (needed for side by side).
 
-## What's left
+## What's next
 
-### 1. Respond to review on PR #27, if any
+1. **Customise toolbar** (FEATURE_PLANS.md section 10a): you were asked whether to plan it now or
+   when more tools exist; no answer yet.
+2. **Research more tools** (section 11), by category: filling and colour, measuring and
+   constructing, shapes and objects, editing ink. The bucket was one example, not the plan.
+3. **Shapes** (not started): placing shapes, more shapes, editable/dynamic shapes, reshaping by
+   anchor points. Investigate and plan first.
 
-Make changes on `personal` first (that's what Saber uses), then bring them to
-`fix/stationary-dots` (cherry-pick, or squash if the reviewer asks for fewer commits).
-
-### 2. When the PR is released
-
-The override is manual: pub can't fall back to upstream by itself, and a merge isn't enough
-(the normal dependency comes from pub.dev). Once a `perfect_freehand` release on pub.dev has
-the fixes: delete the `perfect_freehand` block under `dependency_overrides` in `pubspec.yaml`,
-raise `perfect_freehand: ^2.5.1` to that release, `flutter pub get`, test, commit.
-
-Keep the override on `ref: personal` until then (not `fix/stationary-dots`): you control
-`personal`, while the PR branch may be rebased during review.
-
-### 3. Line styles for pen and pencil (done, `6005f64a`)
-
-Solid, dashed, dotted and dash-dot, picked in the pen tab (fountain and ballpoint pen) and the
-pencil tab; each pen remembers its own (`lastFountainPenLineStyle` etc.). The pattern lives in
-`LineStyle` (`lib/data/tools/line_style.dart`), in multiples of the stroke size. A stroke saves its
-style as `ls` (left out for solid), so other Saber versions draw these strokes solid. A styled stroke
-is drawn as one outline per dash or dot (`Stroke.splitIntoPieces`), also in PDF exports.
-Limits: shapes (hold to shape, shape pen) and the highlighter stay solid; a straight line from hold
-to shape keeps its style.
-Pressure is simulated along the whole stroke before it's cut into dashes, so dashes don't change
-width when the stroke is finished. The area eraser cuts at its edge and keeps each part's place in
-the pattern (`lo`, `Stroke.lineStyleOffset`). Tested on the laptop; not yet on the tablet.
-
-### 4. Ruler (built, `06ddf45b`, `25f0d7fa`, `5b8d8b9c`; waiting on your feedback)
-
-A ruler, try square or Geodreieck over the canvas (`Ruler`, `RulerOutline`, `RulerUnit` and
-`RulerOverlay` in `lib/components/canvas/ruler.dart`; bar in `toolbar/ruler_modal.dart`). It lives
-on the screen (`CanvasGestureDetector`), so it stays put while scrolling and isn't saved or exported.
-- **Toolbar:** the ruler button shows it and opens a bar: shape, unit (mm/cm, inch, pt/pica, custom;
-  `rulerUnit`), *Mark spacing* for custom (`rulerMarkSpacingMm`) and a hide button. Tapping the
-  button again closes or reopens the bar. Shape and unit are remembered (`lastRulerShape`).
-- **Move and rotate:** drag the body; drag the ring in its middle to rotate (snaps to multiples of
-  15° within 2°, angle shown in the ring); two fingers, a trackpad or the mouse wheel also rotate.
-- **Drawing along it** (`RulerOutline.edgeFor`, `EditorState._alongRuler`): a pen stroke (any `Pen`)
-  snaps to a side when it comes within the snap distance of it, at the start or mid-stroke; it
-  stays on that side while the pen is against it or pushed into the ruler, and lets go when pulled
-  more than the snap distance away. Points sit half the stroke's width outside the side and stop
-  at its corners. Pointers in the snap band pass through to the canvas; only the rest of the body
-  moves it. Snap distance: *Ruler snap distance* setting (`rulerSnapDistance`, 8–32 px).
-- **Sizes:** the ruler is a 48 px grab area plus a snap band each side, reaching past the screen.
-  The try square is DIN 875 150 × 100 mm with 30 mm legs (Hoffmann's DIN 875/1 flat square; DIN 875
-  fixes the leg lengths, widths vary by maker). The Geodreieck is 160 × 80 mm (Aristo's 16 cm), scale
-  ±7 cm, protractor 3 mm inside the short sides with two label rows (0–180 each way) and the
-  perpendicular through 0. Both are page mm, so they scale with zoom (real size at *Real size*).
-- **Marks:** page units as the *Real size paper* setting defines them
-  (`ScreenDensity.logicalPixelsPerMm × zoom / realSizeScale`). `RulerUnit.groups` sets the longer
-  marks and labels (mm: 5, 10; inch: 1/8, 1/4, 1/2, 1; pt: 6, 12). Marks and labels thin out when
-  they'd crowd; labels that would overlap the ring, a side, the protractor or another scale are left
-  out.
-- **Your feedback so far:** it looked ugly and the shapes weren't standard sizes. `5b8d8b9c` restyled
-  it (shadow, outline, finer marks, a ring with rotate arrows) and made the sizes real. I checked the
-  look only in test renders with the app font, not in the app.
-
-### 5. Test on the devices (yours)
-
-- **Sync flicker** (`6d6d1e7`): tested on the laptop while watching the server, except the last
-  change: images to load before a reload are now picked by which pages are on screen. Reinstall
-  (`scripts/dev.sh linux install`) and check a reload of a note with images doesn't blink.
-- **Line styles and area eraser on the tablet** (`6005f64a`): draw dashed lines with the pen
-  (real pressure, unlike the laptop's mouse) and erase across them.
-- **Ruler** (`5b8d8b9c`): on the laptop and the tablet, each shape: move, rotate (ring, two
-  fingers, mouse wheel), draw along every side (starting on it and reaching it mid-stroke, then
-  pulling away), each unit, and at *Real size* zoom hold a real ruler/square to the screen. Does it
-  still look ugly?
-- **Strokes with corners when zoomed out:** also in upstream Saber. Drawing in full detail down to
-  0.5x zoom (`3e39cc4`) didn't make them look smoother on the laptop and was reverted (`1690a0c`),
-  so the cause is elsewhere (maybe the mouse's coarse input). Check on the tablet with the pen.
-- **Tablet:** still on an older build. `scripts/dev.sh android install` brings the *Real size paper*
-  setting and the flicker fix.
+Known limitations, accepted for now:
+- The zoom window doesn't show typed text (each page's text editor can only be shown once), and the
+  ruler doesn't act on strokes written in it.
+- The phone toolbar needs two rows (12 always-visible buttons don't fit one).
+- Labels under the ruler's ring or across the protractor's marks are left out.
 
 ### Housekeeping
 
-- Saber has only `main` now (the README says the fork is personal and unmaintained). Note that
-  `personal` in the library rows above means the **perfect-freehand-dart** branch, which stays.
+- Saber has only `main` now (the README says the fork is personal and unmaintained).
 
 ### Gotchas
+
+- **The 20 golden tests that always fail outside Docker:** glassy container, home themes for iOS
+  and macOS, the login pages, `v9_low_point_count.sbn` and 7 of the screenshot goldens. To tell new
+  failures from these, run the same tests on `HEAD` in a worktree (`git worktree add <dir> HEAD`)
+  and compare. Home-theme goldens compare with a tolerance, so small changes (an icon) may only
+  fail the dark ones.
+- **Looking at UI in tests:** a scratch test under `test/_scratch_render/` (delete it afterwards)
+  that pumps the editor in `ScreenshotApp`, calls `tester.loadAssets()`, and writes
+  `matchesGoldenFile('<absolute path>.png')` with `--update-goldens`; for widgets outside the editor,
+  load the font with `FontLoader('AtkinsonHyperlegibleNext')` (and the icon fonts by family name).
+- **Editor tests:** use `testGoldens` with `ScreenshotApp` (the device frame scales the editor, so
+  map page points with `page.renderBox!.localToGlobal`), `pumpAndSettle()` once before drawing
+  (the new note loads first), and draw with small moves and a pump between them. Double-tap tests
+  need explicit pointer time stamps (`gesture.down(…, timeStamp:)`).
+- After editing `lib/i18n/en.i18n.yaml`: `dart run slang`. New imports out of order:
+  `dart fix --apply --code=directives_ordering <file>`.
 
 - `flutter test`/`flutter analyze` in the library add a `build/**` exclude to
   `analysis_options.yaml`: undo with `git checkout analysis_options.yaml` before committing.

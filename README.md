@@ -3,7 +3,7 @@
 > [saber-notes/saber](https://github.com/saber-notes/saber). I just applied some pull requests/features/https://github.com/steveruizok/perfect-freehand-dart/pull/27.
 >
 > This is a local optimisation for my own use. It **won't be maintained**: no updates from upstream,
-> no support, no releases. Everything is on `main`.
+> no support, no releases. Everything is on `main`. These features are all good enough to use, but not good/quality enough for the actual saber repo
 >
 > Commit links point to where each change was made.
 >
@@ -19,6 +19,8 @@
 >   stroke's points, e.g. most of a straight line. ([`6005f64`](https://github.com/Delici0u-s/saber/commit/6005f64a))
 > - **Sync flicker:** an open note no longer flickers when changes from another device arrive (also
 >   while watching the server): pages, images and unchanged PDFs stay on screen. ([`6d6d1e7`](https://github.com/Delici0u-s/saber/commit/6d6d1e71))
+> - **Sync loading:** a note open while it syncs no longer goes blank ("failed to load"): downloads
+>   finish writing before the note reloads, and a reload that fails keeps the note as it was. ([`8a432da`](https://github.com/Delici0u-s/saber/commit/8a432dab))
 >
 > **Features**
 > - **Pressure-sized dots:** a tap's dot is as big as the hardest pressure applied, and taps are
@@ -34,14 +36,29 @@
 > - **Hold to shape:** hold any pen still at the end of a stroke (setting *Hold to shape*, default 1s)
 >   to turn it into a line, rectangle, circle, triangle or star. ([`8c142f2`](https://github.com/Delici0u-s/saber/commit/8c142f25))
 > - **Line styles:** solid, dashed, dotted or dash-dot strokes, picked in the pen and pencil tabs (each
->   pen remembers its own). Other Saber versions draw these strokes solid. ([`6005f64`](https://github.com/Delici0u-s/saber/commit/6005f64a))
+>   pen remembers its own), also kept by hold to shape. Other Saber versions draw these strokes
+>   solid. ([`6005f64`](https://github.com/Delici0u-s/saber/commit/6005f64a), [`8a432da`](https://github.com/Delici0u-s/saber/commit/8a432dab))
+> - **Opacity:** a slider per pen (fountain pen, ballpoint, pencil). ([`8a432da`](https://github.com/Delici0u-s/saber/commit/8a432dab))
+> - **Tape:** a mode in the highlighter tab; tape hides what's under it until tapped, and hides again
+>   when the note is reopened. ([`8a432da`](https://github.com/Delici0u-s/saber/commit/8a432dab))
+> - **Selection handles:** a selection gets a box with handles to resize (corners keep proportions,
+>   sides stretch) and rotate (15° steps), and a thickness slider. ([`8a432da`](https://github.com/Delici0u-s/saber/commit/8a432dab))
+> - **Scribble to erase** and **double-tap to switch to the eraser**, both in the settings. ([`8a432da`](https://github.com/Delici0u-s/saber/commit/8a432dab))
+> - **Zoom window:** write big in a panel at the bottom and it appears small in a box on the page;
+>   the box moves on by itself when you reach its shaded margin. ([`8a432da`](https://github.com/Delici0u-s/saber/commit/8a432dab))
+> - **Side by side:** open another note (to read, or write in) or a PDF next to the note, from the
+>   ⋮ menu. ([`8a432da`](https://github.com/Delici0u-s/saber/commit/8a432dab))
+> - **Search:** search notes by name and folder on the home screens. ([`8a432da`](https://github.com/Delici0u-s/saber/commit/8a432dab))
+> - **PDF import:** choose which pages to import. ([`8a432da`](https://github.com/Delici0u-s/saber/commit/8a432dab))
+> - **Toolbar:** grouped into *Insert* and *Tools*, shown inline when there's room and as buttons
+>   with named rows when not; share is in the app bar. ([`8a432da`](https://github.com/Delici0u-s/saber/commit/8a432dab))
 > - **Ruler:** the ruler button in the toolbar shows a ruler, a try square (DIN 875, 150 × 100 mm) or a
 >   Geodreieck (160 mm, ±7 cm scale, double protractor), picked in the bar it opens; the squares are
 >   real size on the page, so they scale with zoom. Drag the body to move it; drag the ring in its
->   middle to rotate it (snaps to 15° steps, angle shown in the ring), or use two fingers or the mouse
->   wheel. A stroke that reaches a side runs along it until pulled away. Units: mm/cm, inch, pt/pica
->   or a custom mark spacing (real units at *Real size* zoom); how close a stroke has to come is the
->   *Ruler snap distance* setting. ([`06ddf45`](https://github.com/Delici0u-s/saber/commit/06ddf45b), [`25f0d7f`](https://github.com/Delici0u-s/saber/commit/25f0d7fa), [`5b8d8b9`](https://github.com/Delici0u-s/saber/commit/5b8d8b9c))
+>   middle to rotate it (whole degrees, catching on 15° steps; degrees or radians), or use two
+>   fingers or the mouse wheel. A stroke that reaches a side runs along it (and round its corners)
+>   until pulled away. Units: mm/cm, inch, pt/pica or a custom mark spacing (real units at *Real
+>   size* zoom); how close a stroke has to come is the *Ruler snap distance* setting. ([`06ddf45`](https://github.com/Delici0u-s/saber/commit/06ddf45b), [`25f0d7f`](https://github.com/Delici0u-s/saber/commit/25f0d7fa), [`5b8d8b9`](https://github.com/Delici0u-s/saber/commit/5b8d8b9c), [`8a432da`](https://github.com/Delici0u-s/saber/commit/8a432dab))
 > - **Real size:** a HUD button (top left, next to the zoom lock) zooms so a page shows at its
 >   physical size: A4 wide, or the paper picked in the *Real size paper* setting (A5, B5, Letter, A3).
 >   Uses the screen density reported by Android or by the monitor on Linux, or the *Screen density*
