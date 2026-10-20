@@ -381,12 +381,15 @@ class CanvasPainter extends CustomPainter {
       Paint()..color = primaryColor.withValues(alpha: _selectionFillAlpha),
     );
 
-    // draw dashed stroke
+    // A dashed outline where whatever it touches (or mostly covers) is
+    // selected, a solid one where only what's completely inside.
     canvas.drawPath(
-      dashPath(
-        currentSelection!.path,
-        dashArray: CircularIntervalList([10, 10]),
-      ),
+      currentSelection!.selectsWhole
+          ? currentSelection!.path
+          : dashPath(
+              currentSelection!.path,
+              dashArray: CircularIntervalList([10, 10]),
+            ),
       Paint()
         ..color = primaryColor
         ..strokeWidth = 3

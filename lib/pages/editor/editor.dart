@@ -750,7 +750,6 @@ class EditorState extends State<Editor> {
 
   void onDrawStart(ScaleStartDetails details) {
     _shortcutTarget = this;
-    _reshapedInGesture = false;
     if (details.sourceTimeStamp case final time?) {
       _recentDrawStarts.add((time: time, historyLength: history.length));
       if (_recentDrawStarts.length > _recentDrawStartsKept) {
@@ -1448,11 +1447,6 @@ class EditorState extends State<Editor> {
   /// progress.
   _SelectionChange? _selectionChange;
 
-  /// Whether the current (or last) drawing gesture reshaped the selected
-  /// shape, so it isn't also a tap on it (see [_tapAnchor]): a short, quick
-  /// drag counts as both.
-  var _reshapedInGesture = false;
-
   /// Reshapes the selected shape by dragging [change]'s handle to
   /// [position] on [page] ([globalPosition] on screen): along the ruler
   /// when it's against it, else snapped to other anchors and angles (see
@@ -1466,9 +1460,9 @@ class EditorState extends State<Editor> {
     final selected = change.select.selectResult.strokes;
     final handles = change.shapeHandles!, handle = change.shapeHandle!;
     final start = change.start!;
-    // Not until the pen has moved as far as a tap may (see
-    // [CanvasGestureDetector.onTap]), so a tap opens the anchor's menu (see
-    // [_tapAnchor]) instead of nudging it.
+    // Not until the pen has moved further than a tap may (see
+    // [CanvasGestureDetector.onTap]), so a gesture is either a tap, which
+    // opens the anchor's menu (see [_tapAnchor]), or a reshape, never both.
     if (!change.reshaping) {
       if ((position - start).distance * _screenScaleOf(page) <= kTouchSlop) {
         return;
@@ -1558,7 +1552,6 @@ class EditorState extends State<Editor> {
   /// opens a menu of what can be done with it (see [_AnchorAction]) and
   /// returns true.
   bool _tapAnchor(EditorPage page, Offset globalPosition) {
-    if (_reshapedInGesture) return false;
     final anchor = _anchorAt(page, globalPosition);
     if (anchor == null) return false;
     final (select, shape, index) = anchor;
@@ -1641,7 +1634,6 @@ class EditorState extends State<Editor> {
     if (change.isUnchanged) {
       change.revert(page);
     } else {
-      if (change.shapeHandle != null) _reshapedInGesture = true;
       history.recordChange(
         EditorHistoryItem(
           type: .transform,

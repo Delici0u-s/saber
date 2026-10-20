@@ -12,10 +12,6 @@ class SelectBox extends Select {
   static final _currentSelect = SelectBox._();
   static SelectBox get currentSelect => _currentSelect;
 
-  /// The minimum ratio of points inside a stroke or image
-  /// for it to be selected.
-  static const minPercentInside = 0.7;
-
   Offset lastOffset = Offset.zero;
   Offset firstOffset = Offset.zero;
 
@@ -69,6 +65,7 @@ class SelectBox extends Select {
   @override
   void onDragUpdate(Offset position) {
     lastOffset = position;
+    selectResult.selectsWhole = !selectsTouching;
     selectResult.path = Path();
     selectResult.path.moveTo(firstOffset.dx, firstOffset.dy);
     selectResult.path.lineTo(lastOffset.dx, firstOffset.dy);
@@ -77,8 +74,11 @@ class SelectBox extends Select {
     selectResult.path.close();
   }
 
-  /// Adds the indices of any [strokes] that are inside the selection area
-  /// to [selectResult.indices].
+  /// Whether the box selects everything it touches: when dragged from right
+  /// to left (else only what's completely inside it), like in CAD programs.
+  bool get selectsTouching => lastOffset.dx < firstOffset.dx;
+
+  /// Selects the [strokes] and [images] in the box, see [selectsTouching].
   @override
   void onDragEnd(List<Stroke> strokes, List<EditorImage> images) {
     selectResult.path = Path();
@@ -89,53 +89,59 @@ class SelectBox extends Select {
     selectResult.path.close();
     doneSelecting = true;
 
-    for (int i = 0; i < strokes.length; i++) {
-      final stroke = strokes[i];
-      final percentInside = polygonPercentInside(
-        selectResult.path,
-        stroke.lowQualityPolygon,
-      );
-      if (percentInside > minPercentInside) {
+    final box = Rect.fromPoints(firstOffset, lastOffset);
+    final touching = selectsTouching;
+    for (final stroke in strokes) {
+      final polygon = stroke.lowQualityPolygon;
+      if (polygon.isEmpty) continue;
+      if (touching ? touches(box, polygon) : polygon.every(box.contains)) {
         selectResult.strokes.add(stroke);
       }
     }
-
-    for (int i = 0; i < images.length; i++) {
-      final image = images[i];
-      final percentInside = rectPercentInside(selectResult.path, image.dstRect);
-      if (percentInside >= minPercentInside) {
+    for (final image in images) {
+      final rect = image.dstRect;
+      if (touching ? box.overlaps(rect) : box.intersect(rect) == rect) {
         selectResult.images.add(image);
       }
     }
   }
 
-  static double rectPercentInside(Path selection, Rect rect) {
-    const int gridSize = 5;
-    final gridCellWidth = rect.width / (gridSize - 1);
-    final gridCellHeight = rect.height / (gridSize - 1);
-
-    int pointsInside = 0;
-    for (int x = 0; x < gridSize; x++) {
-      for (int y = 0; y < gridSize; y++) {
-        if (selection.contains(
-          Offset(rect.left + gridCellWidth * x, rect.top + gridCellHeight * y),
-        )) {
-          pointsInside++;
-        }
+  /// Whether [polygon] (a closed outline) has a point in [box] or a side
+  /// crossing it.
+  static bool touches(Rect box, List<Offset> polygon) {
+    if (polygon.any(box.contains)) return true;
+    for (var i = 0; i < polygon.length; i++) {
+      if (_segmentCrosses(box, polygon[i], polygon[(i + 1) % polygon.length])) {
+        return true;
       }
     }
-
-    // times 1.25 because the grid is not very accurate
-    return pointsInside / (gridSize * gridSize) * 1.25;
+    return false;
   }
 
-  static double polygonPercentInside(Path selection, List<Offset> polygon) {
-    int pointsInside = 0;
-    for (final point in polygon) {
-      if (selection.contains(point)) {
-        pointsInside++;
+  /// Whether the line from [a] to [b] passes through [box] (clipping it to
+  /// the box, Liang–Barsky).
+  static bool _segmentCrosses(Rect box, Offset a, Offset b) {
+    final d = b - a;
+    var t0 = 0.0, t1 = 1.0;
+    for (final (p, q) in [
+      (-d.dx, a.dx - box.left),
+      (d.dx, box.right - a.dx),
+      (-d.dy, a.dy - box.top),
+      (d.dy, box.bottom - a.dy),
+    ]) {
+      if (p == 0) {
+        if (q < 0) return false;
+        continue;
+      }
+      final t = q / p;
+      if (p < 0) {
+        if (t > t1) return false;
+        if (t > t0) t0 = t;
+      } else {
+        if (t < t0) return false;
+        if (t < t1) t1 = t;
       }
     }
-    return pointsInside / polygon.length;
+    return true;
   }
 }

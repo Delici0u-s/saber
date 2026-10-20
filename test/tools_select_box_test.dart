@@ -75,50 +75,51 @@ void main() {
       );
     });
 
-    test('selects the right images', () async {
+    test('dragged left to right, selects only what is completely inside', () {
       final select = SelectBox.currentSelect;
-
-      // Drag gesture in a 10x10 square shape, on page 0
       select.onDragStart(Offset.zero, 0);
       select.onDragUpdate(const Offset(10, 10));
+      expect(select.selectResult.selectsWhole, isTrue);
 
-      expect(
-        select.selectResult.pageIndex,
-        0,
-        reason: 'The page index should be 0',
-      );
-
-      final List<EditorImage> images = [
-        // index 0 is inside (100% in the selection)
+      final images = <EditorImage>[
         TestImage(dstRect: const .fromLTWH(0, 0, 10, 10)),
-        // index 1 is inside (> 70% in the selection)
         TestImage(dstRect: const .fromLTWH(0, 0, 10 / 0.75, 10 / 0.75)),
-        // index 2 is outside (< 70% in the selection)
-        TestImage(dstRect: const .fromLTWH(0, 0, 10 / 0.6, 10 / 0.6)),
+        TestImage(dstRect: const .fromLTWH(20, 20, 10, 10)),
       ];
-
       select.onDragEnd(const [], images);
+      expect(select.selectResult.images, [images[0]]);
+    });
 
-      expect(
-        select.selectResult.images.length,
-        2,
-        reason: 'Two images should be selected',
-      );
-      expect(
-        select.selectResult.images.contains(images[0]),
-        true,
-        reason: 'The first image should be selected',
-      );
-      expect(
-        select.selectResult.images.contains(images[1]),
-        true,
-        reason: 'The second image should be selected',
-      );
-      expect(
-        select.selectResult.strokes.length,
-        0,
-        reason: 'No strokes should be selected',
-      );
+    test('dragged right to left, selects everything it touches', () {
+      final select = SelectBox.currentSelect;
+      select.onDragStart(const Offset(10, 0), 0);
+      select.onDragUpdate(const Offset(0, 10));
+      expect(select.selectResult.selectsWhole, isFalse);
+
+      const page = HasSize(Size(100, 100));
+      Stroke line(Offset from, Offset to) => Stroke(
+        color: Stroke.defaultColor,
+        pressureEnabled: false,
+        options: StrokeOptions(size: 1),
+        pageIndex: 0,
+        page: page,
+        toolId: .fountainPen,
+      )..addPoints([from, to]);
+      final strokes = [
+        // Partly inside.
+        line(const Offset(5, 5), const Offset(50, 5)),
+        // Crossing it, with no point inside.
+        line(const Offset(-20, 5), const Offset(30, 5)),
+        // Outside.
+        line(const Offset(20, 20), const Offset(30, 30)),
+      ];
+      final images = <EditorImage>[
+        TestImage(dstRect: const .fromLTWH(5, 5, 50, 50)),
+        TestImage(dstRect: const .fromLTWH(20, 20, 10, 10)),
+      ];
+      select.onDragEnd(strokes, images);
+      expect(select.selectResult.strokes, [strokes[0], strokes[1]]);
+      expect(select.selectResult.images, [images[0]]);
     });
 
     group('getDominantStrokeColor', () {

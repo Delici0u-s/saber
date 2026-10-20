@@ -17,6 +17,10 @@ class SelectResult {
   /// and something is selected.
   SelectionBox? box;
 
+  /// Whether only what's completely inside [path] is selected (see
+  /// [SelectBox.selectsTouching]), shown by a solid outline while selecting.
+  var selectsWhole = false;
+
   /// What made the selection (an editor), as the selection tools are shared
   /// by every editor (e.g. two notes side by side).
   Object? owner;

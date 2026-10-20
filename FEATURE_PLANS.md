@@ -469,6 +469,11 @@ and moving attached anchors along whenever a shape changes (move, transform, res
   the selection keeps it; tape still opens/closes on tap. A handle only starts moving once the pen
   has moved as far as a tap may (`kTouchSlop`), so a stylus tap on a corner opens its menu instead
   of nudging it; and a handle moves with the pen wherever it was grabbed (no jump).
+- **Second round:** the corner menu stayed blocked after a reshape when the next tap didn't start
+  a drawing gesture (a finger with finger drawing off); fixed, tested for mouse, stylus and finger
+  (`test/shape_anchor_tap_test.dart`). Box selection works like CAD programs: dragged left to
+  right it selects what's completely inside (solid outline), right to left everything it touches
+  (dashed outline); the lasso is unchanged (70% inside).
 - **Tests:** `test/stroke_shape_test.dart`, `test/shape_editing_test.dart` (through the editor),
   updated `hold_to_shape_test.dart` and `selection_transform_test.dart`.
 
