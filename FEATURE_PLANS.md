@@ -481,6 +481,18 @@ and moving attached anchors along whenever a shape changes (move, transform, res
 old code path (as points); dragging each handle type through the real editor (corner, middle,
 ellipse axis, snapping); the anchor bar; undo/redo; phone and desktop sizes; many anchors.
 
+### 13c. Built (2026-10-20): placing shapes (C)
+
+- *Insert → Shapes* picks `ShapePlacer` (a `Pen` borrowing the last pen's colour, size, line style
+  and opacity) and opens a row: each `ShapeSample` drawn as itself (line, arrow, double arrow,
+  rectangle, ellipse, triangle, parallelogram, polygon, star, axes), corners for polygon and star
+  (3–12), then the pen's size, line style and opacity. Last shape and corners are remembered.
+- Drag from corner to corner (along a line for lines); Shift keeps proportions (square, circle,
+  regular polygon, lines at 15°). A tap places nothing. One undo step per shape.
+- The placer isn't saved as the last tool (its id is the shape pen's), so notes open with the pen.
+- Not done: a second finger for proportions on touch screens (only Shift).
+- Tests: `test/shape_placer_test.dart`.
+
 ## Order
 
 1. ~~Opacity, scribble to erase~~ (built)
@@ -490,4 +502,5 @@ ellipse axis, snapping); the anchor bar; undo/redo; phone and desktop sizes; man
 5. ~~Toolbar clean-up (section 10)~~ (built: *Tools*, fullscreen stays one tap)
 6. ~~Choosing PDF pages (section 12)~~ (built)
 7. Research for section 11 (shapes done: section 13; the other categories next)
-8. Shapes (section 13): ~~step 1 (13a)~~ built (13b); next B (recognising), C, E
+8. Shapes (section 13): ~~step 1 (13a)~~ built (13b); ~~C (placing)~~ built (13c); next E (fill),
+   then B (recognising)

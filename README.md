@@ -34,7 +34,7 @@
 > - **Crop images:** *Crop* in an image's long-press menu (pictures only). Crops the pixels, so the result
 >   looks the same in other Saber versions; undo restores the original. ([`256e423`](https://github.com/Delici0u-s/saber/commit/256e423e))
 > - **Hold to shape:** hold any pen still at the end of a stroke (setting *Hold to shape*, default 1s)
->   to turn it into a line, rectangle, circle, triangle or star. ([`8c142f2`](https://github.com/Delici0u-s/saber/commit/8c142f25))
+>   to turn it into a line, rectangle, circle, triangle or star (editable, see below). ([`8c142f2`](https://github.com/Delici0u-s/saber/commit/8c142f25))
 > - **Line styles:** solid, dashed, dotted or dash-dot strokes, picked in the pen and pencil tabs (each
 >   pen remembers its own), also kept by hold to shape. Other Saber versions draw these strokes
 >   solid. ([`6005f64`](https://github.com/Delici0u-s/saber/commit/6005f64a), [`8a432da`](https://github.com/Delici0u-s/saber/commit/8a432dab))
@@ -43,6 +43,15 @@
 >   when the note is reopened. ([`8a432da`](https://github.com/Delici0u-s/saber/commit/8a432dab))
 > - **Selection handles:** a selection gets a box with handles to resize (corners keep proportions,
 >   sides stretch) and rotate (15° steps), and a thickness slider. ([`8a432da`](https://github.com/Delici0u-s/saber/commit/8a432dab))
+> - **Editable shapes:** recognised and placed shapes stay shapes (also rotated or stretched). Select
+>   one to drag its corners, bend its sides, or tap a corner to make it smooth or delete it; corners
+>   snap onto other shapes, the ruler and 15° angles. Other Saber versions show them as plain strokes.
+>   ([`2ee6acd`](https://github.com/Delici0u-s/saber/commit/2ee6acd1), [`969c959`](https://github.com/Delici0u-s/saber/commit/969c9594))
+> - **Place shapes:** *Insert → Shapes*: lines, arrows, rectangles, ellipses, triangles,
+>   parallelograms, polygons, stars and axes, dragged out from corner to corner (Shift keeps
+>   proportions). ([`5078bde`](https://github.com/Delici0u-s/saber/commit/5078bdeb))
+> - **Tap to select** a stroke or image with the selection tool; box selection dragged left to right
+>   takes what's completely inside, right to left everything it touches. ([`2ee6acd`](https://github.com/Delici0u-s/saber/commit/2ee6acd1), [`969c959`](https://github.com/Delici0u-s/saber/commit/969c9594))
 > - **Scribble to erase** and **double-tap to switch to the eraser**, both in the settings. ([`8a432da`](https://github.com/Delici0u-s/saber/commit/8a432dab))
 > - **Zoom window:** write big in a panel at the bottom and it appears small in a box on the page;
 >   the box moves on by itself when you reach its shaded margin. ([`8a432da`](https://github.com/Delici0u-s/saber/commit/8a432dab))

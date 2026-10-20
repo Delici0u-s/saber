@@ -1,13 +1,14 @@
-# Handoff (2026-10-20, paused here; continue in a new chat)
+# Handoff (2026-10-20 evening, paused here; continue in a new chat)
 
 Where things stand, what's left, and how to set up a new machine. The feature plans (with every
 decision you made) are in `FEATURE_PLANS.md`; read it together with this.
 
 ## State
 
-All work is committed: the features in `8a432da`, the README, this handoff and
-`FEATURE_PLANS.md` in the `personal:` commit after it. You tested everything on the PC and the
-tablet ("all things work nicely").
+All work is committed. Earlier features in `8a432da`; shapes in `2ee6acd` (editable shapes, tap to
+select), `969c959` (corner taps, CAD-style box selection) and `5078bde` (placing shapes from
+*Insert → Shapes*); README, this handoff and the plans in the `personal:` commit after it. You tested editable shapes, tap to select and box
+selection on the tablet; **placing shapes (the last commit) isn't tested on a device yet**.
 
 - `main` of `Delici0u-s/saber` is the only branch. Saber gets `perfect_freehand` from the fork's
   `personal` branch via `dependency_overrides` in `pubspec.yaml`; `pubspec.lock` pins the commit.
@@ -33,7 +34,7 @@ tablet ("all things work nicely").
 | Ruler fixes | Corners: strokes go round outer corners, stop at inner ones; labels fit by their box; clipped to the canvas; 1° steps (15° catch within 0.75°); degrees/radians; Geodreieck after the mizi drawing (edge marks along their angle) | `components/canvas/ruler.dart` |
 | Sync fix | Downloads wait for the write; a failed reload keeps the open note | `nextcloud/saber_syncer.dart`, `EditorState._reloadInPlace` |
 | Search | Search button on *Recent* and *Browse*: notes by name/folder, with thumbnails | `components/home/search_notes_button.dart` |
-| Line styles in shapes | Hold to shape keeps dashes/dots; preview in the style | `tools/pen.dart` (`toShape`, `outlineStroke`), `_canvas_painter.dart` |
+| Line styles in shapes | Hold to shape keeps dashes/dots; preview in the style | `tools/pen.dart` (`toShape`), `_canvas_painter.dart` |
 | Opacity | Slider per pen (fountain, ballpoint, pencil), saved as colour alpha | `toolbar/opacity_picker.dart` |
 | Scribble to erase | Setting, off by default; pens and pencil only | `tools/scribble_erase.dart` |
 | Lasso actions | Box with corner/side/rotate handles, thickness slider, one undo step each | `editor/selection_transform.dart`, `_SelectionChange` in `editor.dart` |
@@ -49,14 +50,35 @@ zoom only (2.5× too small on phones); duplicated images weren't offset; the pen
 phones (tool options now scroll); the stroke being drawn, selections, the shape preview and
 Ctrl+Z are tied to their own editor (needed for side by side).
 
+## Built (2026-10-20 evening): shapes, FEATURE_PLANS.md section 13
+
+| Feature | What it does | Main code |
+|---|---|---|
+| Editable shapes | A stroke can carry a shape (`PathShape`: corner/smooth anchors, closed or open, arrow heads; `EllipseShape`); its points are laid along it, so eraser, lasso, styles, tape, exports and old Saber versions just work. Recognised shapes (also auto-straightened lines) are shapes, and stay shapes when rotated/stretched | `components/canvas/stroke_shape.dart`, `Stroke.setShape`, `Pen.toShape`/`shapeStroke` |
+| Reshaping | Select one shape: square handles on corners, filled circles on smooth points/ellipse axes, small circles mid-side (drag = bend). Snaps onto other shapes' anchors, the ruler, 15° from neighbours. Tap a corner: menu *Smooth/Corner*, *Delete point*. A handle only moves past `kTouchSlop`, so a tap is never a reshape | `data/editor/shape_handles.dart`, `_reshapeSelection`/`_tapAnchor` in `editor.dart` |
+| Tap to select | With lasso/box: tap a stroke/image selects it, tap nothing unselects | `Select.selectAt`, `_tapSelect` |
+| Box selection | Left→right: only what's completely inside (solid outline); right→left: everything touched (dashed) | `tools/select_box.dart` |
+| Placing shapes | *Insert → Shapes*: a row of shapes drawn as themselves (line, arrow, double arrow, rectangle, ellipse, triangle, parallelogram, polygon, star, axes), corners for polygon/star, and the pen's size/style/opacity; drag from corner to corner, Shift keeps proportions. Uses the last pen (`Pen.currentPen`); adding a shape = one `ShapeSample` entry | `tools/shape_placer.dart`, `toolbar/shapes_bar.dart` |
+
+Saved format: `shape: 'path'` (`sa` anchors, `ss` smooth indices, `sc` closed, `sh` head bits) or
+`'ellipse'` (`se`), plus the points (`p`) that old versions draw.
+
 ## What's next
 
-1. **Customise toolbar** (FEATURE_PLANS.md section 10a): you were asked whether to plan it now or
-   when more tools exist; no answer yet.
-2. **Research more tools** (section 11), by category: filling and colour, measuring and
-   constructing, shapes and objects, editing ink. The bucket was one example, not the plan.
-3. **Shapes** (not started): placing shapes, more shapes, editable/dynamic shapes, reshaping by
-   anchor points. Investigate and plan first.
+1. **Test placing shapes on the tablet** (install with `scripts/dev.sh android`).
+2. **Shapes, the rest of section 13:**
+   - **E, Fill tool** (S): a bucket next to the pens; tap a closed shape to fill it with the colour
+     bar's colour (later the eyedropper; later any area closed by strokes). Decided, not built.
+   - **B, better recognising** (M, needs tuning on the tablet): corner finding for any polygon,
+     ellipse fit, arrows, tidying (squares, regular polygons, angles); keep the pen down to adjust
+     the recognised shape. Hold to shape on all pens gets these too (decided).
+   - **Connectors** (wanted, later): shapes sharing a point; needs lasting stroke ids first (see
+     13a).
+   - Idea from the tap confusion: line ends could get an *Arrow head* toggle in the corner menu
+     (lines and ellipses have no menu now, as nothing in it applies).
+3. **Customise toolbar** (section 10a): plan once there are more tools.
+4. **Research more tools** (section 11): filling and colour, measuring and constructing, editing
+   ink (shapes are done).
 
 Known limitations, accepted for now:
 - The zoom window doesn't show typed text (each page's text editor can only be shown once), and the
@@ -79,6 +101,12 @@ Known limitations, accepted for now:
   that pumps the editor in `ScreenshotApp`, calls `tester.loadAssets()`, and writes
   `matchesGoldenFile('<absolute path>.png')` with `--update-goldens`; for widgets outside the editor,
   load the font with `FontLoader('AtkinsonHyperlegibleNext')` (and the icon fonts by family name).
+- **Stylus in tests turns finger drawing off** (`autoDisableFingerDrawingWhenStylusDetected`), so
+  later finger drags pan instead of drawing: set `stows.editorFingerDrawing.value = true` again.
+  Quick taps in tests can also make a double tap (double-tap to erase switches to the eraser):
+  wait `kDoubleTapTimeout` between them.
+- **Pages repaint, they don't rebuild, while drawing:** a tool must change `Pen.currentStroke` in
+  place (e.g. `setShape`), not replace it, or the canvas keeps drawing the old one.
 - **Editor tests:** use `testGoldens` with `ScreenshotApp` (the device frame scales the editor, so
   map page points with `page.renderBox!.localToGlobal`), `pumpAndSettle()` once before drawing
   (the new note loads first), and draw with small moves and a pump between them. Double-tap tests
