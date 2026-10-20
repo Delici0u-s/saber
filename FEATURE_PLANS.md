@@ -496,6 +496,24 @@ ellipse axis, snapping); the anchor bar; undo/redo; phone and desktop sizes; man
   option (out of the pen tab); axes with tick marks/labels, other axis types and similar maths
   features (plan first).
 
+## 14. Later: smaller requests (your list, 2026-10-21, plan each first)
+
+- **Performance:** it only slows down on really long notes with a lot on them; find out what
+  costs the most there (drawing, scrolling, zooming, selecting) and fix the worst first. Measure
+  before and after on such a note.
+- **Moving small selections:** a small selection is hard to grab without hitting a handle or
+  missing it; add a move handle (e.g. below the selection's box) that drags the whole selection.
+- **Dot gap for dotted lines:** a setting for the distance between the dots (today fixed in
+  `LineStyle.dotted` in `tools/line_style.dart`, relative to the stroke's size).
+- **Ruler transparency:** a slider for the ruler's opacity (in the ruler's menu).
+- **Lock the ruler to the note:** an option to pin the ruler to a place on the page, so it scrolls
+  and zooms with the note instead of staying on the screen.
+- **Faster hold to shape:** a shorter delay option (the setting has 0.5 s, 1 s, off; e.g. 0.25 s or a
+  slider).
+- **Custom screen density:** a setting to type in the screen's density (the ruler's real size comes
+  from `ScreenDensity` now), with an optional help popup: it shows a line of a given length, you
+  measure it with a real ruler and enter what you measured, and the density is worked out from that.
+
 ## Order
 
 1. ~~Opacity, scribble to erase~~ (built)
@@ -507,3 +525,4 @@ ellipse axis, snapping); the anchor bar; undo/redo; phone and desktop sizes; man
 7. Research for section 11 (shapes done: section 13; the other categories next)
 8. Shapes (section 13): ~~step 1 (13a)~~ built (13b); ~~C (placing)~~ built (13c); next E (fill),
    then B (recognising)
+9. Section 14 (smaller requests), each planned first
