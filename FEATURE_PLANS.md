@@ -492,6 +492,9 @@ ellipse axis, snapping); the anchor bar; undo/redo; phone and desktop sizes; man
 - The placer isn't saved as the last tool (its id is the shape pen's), so notes open with the pen.
 - Not done: a second finger for proportions on touch screens (only Shift).
 - Tests: `test/shape_placer_test.dart`.
+- **Later (your requests, 2026-10-20):** move the shape pen into this row as an "auto-detect"
+  option (out of the pen tab); axes with tick marks/labels, other axis types and similar maths
+  features (plan first).
 
 ## Order
 

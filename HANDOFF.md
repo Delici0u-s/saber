@@ -8,7 +8,7 @@ decision you made) are in `FEATURE_PLANS.md`; read it together with this.
 All work is committed. Earlier features in `8a432da`; shapes in `2ee6acd` (editable shapes, tap to
 select), `969c959` (corner taps, CAD-style box selection) and `5078bde` (placing shapes from
 *Insert → Shapes*); README, this handoff and the plans in the `personal:` commit after it. You tested editable shapes, tap to select and box
-selection on the tablet; **placing shapes (the last commit) isn't tested on a device yet**.
+selection on the tablet, and placing shapes ("works great").
 
 - `main` of `Delici0u-s/saber` is the only branch. Saber gets `perfect_freehand` from the fork's
   `personal` branch via `dependency_overrides` in `pubspec.yaml`; `pubspec.lock` pins the commit.
@@ -65,8 +65,7 @@ Saved format: `shape: 'path'` (`sa` anchors, `ss` smooth indices, `sc` closed, `
 
 ## What's next
 
-1. **Test placing shapes on the tablet** (install with `scripts/dev.sh android`).
-2. **Shapes, the rest of section 13:**
+1. **Shapes, the rest of section 13:**
    - **E, Fill tool** (S): a bucket next to the pens; tap a closed shape to fill it with the colour
      bar's colour (later the eyedropper; later any area closed by strokes). Decided, not built.
    - **B, better recognising** (M, needs tuning on the tablet): corner finding for any polygon,
@@ -76,8 +75,14 @@ Saved format: `shape: 'path'` (`sa` anchors, `ss` smooth indices, `sc` closed, `
      13a).
    - Idea from the tap confusion: line ends could get an *Arrow head* toggle in the corner menu
      (lines and ellipses have no menu now, as nothing in it applies).
-3. **Customise toolbar** (section 10a): plan once there are more tools.
-4. **Research more tools** (section 11): filling and colour, measuring and constructing, editing
+   - **Move the shape pen into the Shapes row** (your request, later): the shape pen (draw roughly,
+     recognised as you draw) becomes an "auto-detect" option among the shapes, instead of a pen
+     in the pen tab.
+   - **Axes with markers and more** (your request, later): tick marks and labels on the axes,
+     other axis types (e.g. both directions through the origin, 3D axes), and similar maths
+     features. Plan first.
+2. **Customise toolbar** (section 10a): plan once there are more tools.
+3. **Research more tools** (section 11): filling and colour, measuring and constructing, editing
    ink (shapes are done).
 
 Known limitations, accepted for now:
