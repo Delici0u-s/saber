@@ -160,6 +160,8 @@ class EditorHistoryItem {
     this.colorChange,
     this.backgroundPatternChange,
     this.imageRectChange,
+    this.quarterTurns,
+    this.backgroundFitChange,
   }) : assert(
          type != .move || offset != null,
          'Offset must be provided for move',
@@ -202,6 +204,14 @@ class EditorHistoryItem {
                  imageRectChange?.length == images.length),
          'Each stroke needs a replacement and each image its change of place '
          'for transform',
+       ),
+       assert(
+         type != .reshapePage ||
+             (replacementStrokes.length == strokes.length &&
+                 imageRectChange?.length == images.length &&
+                 quarterTurns != null),
+         'Each stroke needs a replacement, each image its change of place and '
+         'the page its quarter turns for reshapePage',
        );
 
   final EditorHistoryItemType type;
@@ -219,9 +229,19 @@ class EditorHistoryItem {
   final Map<Stroke, Change<Color>>? colorChange;
   final Change<CanvasBackgroundPattern>? backgroundPatternChange;
 
-  /// For [EditorHistoryItemType.transform]: where each of [images] was and
+  /// For [EditorHistoryItemType.transform] and
+  /// [EditorHistoryItemType.reshapePage]: where each of [images] was and
   /// went.
   final Map<EditorImage, Change<Rect>>? imageRectChange;
+
+  /// For [EditorHistoryItemType.reshapePage]: how many quarter turns
+  /// clockwise the page's background was turned by (negative: anticlockwise;
+  /// 0 when it was stretched).
+  final int? quarterTurns;
+
+  /// For [EditorHistoryItemType.reshapePage]: how the page's background was
+  /// fitted before and after, if that changed.
+  final Change<BoxFit>? backgroundFitChange;
 
   EditorHistoryItem copyWith({
     EditorHistoryItemType? type,
@@ -237,6 +257,8 @@ class EditorHistoryItem {
     Map<Stroke, Change<Color>>? colorChange,
     Change<CanvasBackgroundPattern>? backgroundPatternChange,
     Map<EditorImage, Change<Rect>>? imageRectChange,
+    int? quarterTurns,
+    Change<BoxFit>? backgroundFitChange,
   }) {
     return EditorHistoryItem(
       type: type ?? this.type,
@@ -253,6 +275,8 @@ class EditorHistoryItem {
       backgroundPatternChange:
           backgroundPatternChange ?? this.backgroundPatternChange,
       imageRectChange: imageRectChange ?? this.imageRectChange,
+      quarterTurns: quarterTurns ?? this.quarterTurns,
+      backgroundFitChange: backgroundFitChange ?? this.backgroundFitChange,
     );
   }
 }
@@ -273,4 +297,10 @@ enum EditorHistoryItemType {
   /// Resizing, rotating or changing the thickness of a selection: [strokes]
   /// were swapped for [replacementStrokes], and images moved.
   transform,
+
+  /// Turning or stretching page [pageIndex] to the other orientation: its
+  /// width and height swapped, its background turned by [quarterTurns] and
+  /// refitted by [backgroundFitChange], its [strokes] were swapped for
+  /// [replacementStrokes] and its images moved.
+  reshapePage,
 }

@@ -436,6 +436,10 @@ editor:
     clearAllPages: Clear all pages
     insertPage: Insert page below
     duplicatePage: Duplicate page
+    rotatePage: Rotate page
+    turnPage: Turn page
+    stretchToLandscape: Stretch to landscape
+    stretchToPortrait: Stretch to portrait
     deletePage: Delete page
     lineHeight: Line height
     lineHeightDescription: Also controls the text size for typed notes

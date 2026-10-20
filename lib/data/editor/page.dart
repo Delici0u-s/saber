@@ -49,8 +49,9 @@ class EditorPage extends ChangeNotifier implements HasSize {
   static int mmToUnits(double mm) =>
       (mm * defaultWidth / defaultWidthMm).round();
 
+  /// Changes when the page is turned (see [EditorState.rotatePage]).
   @override
-  final Size size;
+  Size size;
 
   /// The area the eraser covers while erasing on this page,
   /// so the canvas can outline it. Null when not erasing.

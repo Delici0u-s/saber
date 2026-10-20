@@ -199,15 +199,18 @@ class _CanvasImageState extends State<CanvasImage> {
                             widget.image.dstRect.height,
                             CanvasImage.minImageSize,
                           ),
-                    child: SizedOverflowBox(
-                      size: widget.image.srcRect.size,
-                      child: Transform.translate(
-                        offset: -widget.image.srcRect.topLeft,
-                        child: widget.image.buildImageWidget(
-                          context: context,
-                          overrideBoxFit: widget.overrideBoxFit,
-                          isBackground: widget.isBackground,
-                          invert: imageBrightness == .dark,
+                    child: RotatedBox(
+                      quarterTurns: widget.image.quarterTurns,
+                      child: SizedOverflowBox(
+                        size: widget.image.srcRect.size,
+                        child: Transform.translate(
+                          offset: -widget.image.srcRect.topLeft,
+                          child: widget.image.buildImageWidget(
+                            context: context,
+                            overrideBoxFit: widget.overrideBoxFit,
+                            isBackground: widget.isBackground,
+                            invert: imageBrightness == .dark,
+                          ),
                         ),
                       ),
                     ),

@@ -94,6 +94,12 @@ sealed class EditorImage extends ChangeNotifier {
   /// The BoxFit used if this is a page's background image
   BoxFit backgroundFit;
 
+  /// How many quarter turns clockwise the image is drawn turned by (0 to 3),
+  /// e.g. a page's background when the page is turned (see
+  /// [EditorState.rotatePage]). [dstRect] is the turned image's box;
+  /// [naturalSize] and [srcRect] are the image's own, before turning.
+  var quarterTurns = 0;
+
   @protected
   new({
     required this.id,
@@ -122,8 +128,9 @@ sealed class EditorImage extends ChangeNotifier {
     required AssetCache assetCache,
   }) {
     final extension = json['e'] as String?;
+    final EditorImage image;
     if (extension == '.svg') {
-      return SvgEditorImage.fromJson(
+      image = SvgEditorImage.fromJson(
         json,
         inlineAssets: inlineAssets,
         isThumbnail: isThumbnail,
@@ -131,7 +138,7 @@ sealed class EditorImage extends ChangeNotifier {
         assetCache: assetCache,
       );
     } else if (extension == '.pdf') {
-      return PdfEditorImage.fromJson(
+      image = PdfEditorImage.fromJson(
         json,
         inlineAssets: inlineAssets,
         isThumbnail: isThumbnail,
@@ -139,7 +146,7 @@ sealed class EditorImage extends ChangeNotifier {
         assetCache: assetCache,
       );
     } else {
-      return PngEditorImage.fromJson(
+      image = PngEditorImage.fromJson(
         json,
         inlineAssets: inlineAssets,
         isThumbnail: isThumbnail,
@@ -147,6 +154,7 @@ sealed class EditorImage extends ChangeNotifier {
         assetCache: assetCache,
       );
     }
+    return image..quarterTurns = json['qt'] ?? 0;
   }
 
   @mustBeOverridden
@@ -167,6 +175,7 @@ sealed class EditorImage extends ChangeNotifier {
     if (srcRect.height != 0) 'sh': srcRect.height,
     if (naturalSize.width != 0) 'nw': naturalSize.width,
     if (naturalSize.height != 0) 'nh': naturalSize.height,
+    if (quarterTurns != 0) 'qt': quarterTurns,
   };
 
   /// Images are loaded out after 5 seconds of not being visible.

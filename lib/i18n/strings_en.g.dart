@@ -1610,6 +1610,18 @@ class Translations$editor$menu$en {
 	/// en: 'Duplicate page'
 	String get duplicatePage => 'Duplicate page';
 
+	/// en: 'Rotate page'
+	String get rotatePage => 'Rotate page';
+
+	/// en: 'Turn page'
+	String get turnPage => 'Turn page';
+
+	/// en: 'Stretch to landscape'
+	String get stretchToLandscape => 'Stretch to landscape';
+
+	/// en: 'Stretch to portrait'
+	String get stretchToPortrait => 'Stretch to portrait';
+
 	/// en: 'Delete page'
 	String get deletePage => 'Delete page';
 

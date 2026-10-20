@@ -16,6 +16,8 @@ class EditorPageManager extends StatefulWidget {
     required this.insertPageAfter,
     required this.duplicatePage,
     required this.clearPage,
+    required this.rotatePage,
+    required this.stretchPage,
     required this.deletePage,
     required this.transformationController,
   });
@@ -27,6 +29,8 @@ class EditorPageManager extends StatefulWidget {
   final void Function(int) insertPageAfter;
   final void Function(int) duplicatePage;
   final void Function(int) clearPage;
+  final void Function(int) rotatePage;
+  final void Function(int) stretchPage;
   final void Function(int) deletePage;
 
   final TransformationController transformationController;
@@ -133,6 +137,39 @@ class _EditorPageManagerState extends State<EditorPageManager> {
                                 scrollToPage(pageIndex);
                               }),
                       ),
+                      PopupMenuButton<_PageReshape>(
+                        tooltip: t.editor.menu.rotatePage,
+                        icon: const AdaptiveIcon(
+                          icon: Icons.rotate_90_degrees_cw,
+                          cupertinoIcon: CupertinoIcons.rotate_right,
+                        ),
+                        onSelected: (reshape) => setState(() {
+                          switch (reshape) {
+                            case .turn:
+                              widget.rotatePage(pageIndex);
+                            case .stretch:
+                              widget.stretchPage(pageIndex);
+                          }
+                          scrollToPage(pageIndex);
+                        }),
+                        itemBuilder: (context) {
+                          final size = widget.coreInfo.pages[pageIndex].size;
+                          return [
+                            PopupMenuItem(
+                              value: .turn,
+                              child: Text(t.editor.menu.turnPage),
+                            ),
+                            PopupMenuItem(
+                              value: .stretch,
+                              child: Text(
+                                size.width > size.height
+                                    ? t.editor.menu.stretchToPortrait
+                                    : t.editor.menu.stretchToLandscape,
+                              ),
+                            ),
+                          ];
+                        },
+                      ),
                       IconButton(
                         tooltip: t.editor.menu.deletePage,
                         icon: const AdaptiveIcon(
@@ -171,4 +208,13 @@ class _EditorPageManagerState extends State<EditorPageManager> {
       ),
     );
   }
+}
+
+/// What the page manager's rotate menu does to a page.
+enum _PageReshape {
+  /// Turns it a quarter turn clockwise with what's on it.
+  turn,
+
+  /// Stretches it and what's on it to the other orientation.
+  stretch,
 }

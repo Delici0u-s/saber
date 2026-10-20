@@ -163,19 +163,45 @@ class PdfEditorImage extends EditorImage {
     required bool isBackground,
     required bool invert,
   }) {
+    final BoxFit boxFit;
+    if (overrideBoxFit != null) {
+      boxFit = overrideBoxFit;
+    } else if (isBackground) {
+      boxFit = backgroundFit;
+    } else {
+      boxFit = .fill;
+    }
+
     return ValueListenableBuilder(
       valueListenable: _pdfDocument,
       builder: (context, pdfDocument, child) {
         if (pdfDocument == null) {
           return SizedBox.fromSize(size: srcRect.size);
         }
+        // [PdfPageView] always keeps the page's shape, so it's laid out in
+        // that shape and fitted from outside. It renders at the size it's
+        // laid out at, so that's at least as big as it's shown, to stay sharp.
         return InvertWidget(
           invert: invert,
-          child: PdfPageView(
-            document: pdfDocument,
-            // [PdfPageView.pageNumber] starts at 1 not 0
-            pageNumber: pdfPage + 1,
-            decoration: const BoxDecoration(),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final scale = max(
+                constraints.maxWidth / naturalSize.width,
+                constraints.maxHeight / naturalSize.height,
+              );
+              return FittedBox(
+                fit: boxFit,
+                child: SizedBox.fromSize(
+                  size: scale.isFinite ? naturalSize * scale : naturalSize,
+                  child: PdfPageView(
+                    document: pdfDocument,
+                    // [PdfPageView.pageNumber] starts at 1 not 0
+                    pageNumber: pdfPage + 1,
+                    decoration: const BoxDecoration(),
+                  ),
+                ),
+              );
+            },
           ),
         );
       },
@@ -201,7 +227,7 @@ class PdfEditorImage extends EditorImage {
     dstRect: dstRect,
     naturalSize: naturalSize,
     isThumbnail: isThumbnail,
-  );
+  )..quarterTurns = quarterTurns;
 
   @override
   void dispose() {

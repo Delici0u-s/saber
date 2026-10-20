@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:collapsible/collapsible.dart';
 import 'package:file_picker/file_picker.dart';
@@ -579,6 +580,9 @@ class EditorState extends State<Editor> {
               in item.imageRectChange!.entries) {
             image.dstRect = change.previous;
           }
+
+        case .reshapePage:
+          _reshapePage(_reversedPageReshape(item));
       }
 
       if (item.type != .move) {
@@ -659,6 +663,8 @@ class EditorState extends State<Editor> {
             ),
           ),
         );
+      case .reshapePage:
+        undo(_reversedPageReshape(item));
     }
   }
 
@@ -3127,6 +3133,8 @@ class EditorState extends State<Editor> {
         autosaveAfterDelay();
       }),
       clearPage: clearPage,
+      rotatePage: rotatePage,
+      stretchPage: stretchPage,
       deletePage: (int pageIndex) => setState(() {
         if (coreInfo.readOnly) return;
         final page = coreInfo.pages.removeAt(pageIndex);
@@ -3145,6 +3153,161 @@ class EditorState extends State<Editor> {
       transformationController: _transformationController,
     );
   }
+
+  /// Turns page [pageIndex] a quarter turn clockwise with what's on it,
+  /// keeping its scale: its width and height swap. Images move with the page
+  /// but keep their own orientation (images can't be turned); typed text
+  /// stays and flows across the new width.
+  void rotatePage(int pageIndex) {
+    if (coreInfo.readOnly) return;
+    final page = coreInfo.pages[pageIndex];
+    final height = page.size.height;
+    final turnedSize = page.size.flipped;
+
+    // Clockwise around (height / 2, height / 2), which takes (x, y) to
+    // (height - y, x): the left side becomes the top.
+    final turn = SelectionTransform(
+      origin: Offset(height / 2, height / 2),
+      rotation: pi / 2,
+    );
+    Rect turnedBox(Rect rect) => .fromLTRB(
+      height - rect.bottom,
+      rect.left,
+      height - rect.top,
+      rect.right,
+    );
+    // How far to shift a side from [start] to [end] to keep it on a page
+    // [length] long, where it fits.
+    double into(double start, double end, double length) {
+      final shift = min(0.0, length - end);
+      return start + shift < 0 ? -start : shift;
+    }
+
+    Rect movedImage(Rect rect) {
+      final moved = Rect.fromCenter(
+        center: turnedBox(rect).center,
+        width: rect.width,
+        height: rect.height,
+      );
+      return moved.shift(
+        Offset(
+          into(moved.left, moved.right, turnedSize.width),
+          into(moved.top, moved.bottom, turnedSize.height),
+        ),
+      );
+    }
+
+    final imageRectChange = {
+      for (final image in page.images)
+        image: Change(
+          previous: image.dstRect,
+          current: movedImage(image.dstRect),
+        ),
+    };
+    if (page.backgroundImage case final background?) {
+      imageRectChange[background] = Change(
+        previous: background.dstRect,
+        current: turnedBox(background.dstRect),
+      );
+    }
+    _recordPageReshape(
+      EditorHistoryItem(
+        type: .reshapePage,
+        pageIndex: pageIndex,
+        strokes: List.of(page.strokes),
+        replacementStrokes: [
+          for (final stroke in page.strokes) turn.apply(stroke)..page = page,
+        ],
+        images: imageRectChange.keys.toList(),
+        imageRectChange: imageRectChange,
+        quarterTurns: 1,
+      ),
+    );
+  }
+
+  /// Stretches page [pageIndex] to the other orientation (portrait to
+  /// landscape or back): its width and height swap, and its background,
+  /// ink and images stretch to the new edges. The background is then drawn
+  /// filling the page (see [EditorImage.backgroundFit]); typed text stays and
+  /// flows across the new width.
+  void stretchPage(int pageIndex) {
+    if (coreInfo.readOnly) return;
+    final page = coreInfo.pages[pageIndex];
+    final stretchedSize = page.size.flipped;
+    // Pens keep their size, as when they're used on the stretched page.
+    final stretch = SelectionTransform(
+      scaleX: stretchedSize.width / page.size.width,
+      scaleY: stretchedSize.height / page.size.height,
+      widthScale: 1,
+    );
+    final background = page.backgroundImage;
+    final imageRectChange = {
+      for (final image in [...page.images, ?background])
+        image: Change(
+          previous: image.dstRect,
+          current: stretch.applyToRect(image.dstRect),
+        ),
+    };
+    _recordPageReshape(
+      EditorHistoryItem(
+        type: .reshapePage,
+        pageIndex: pageIndex,
+        strokes: List.of(page.strokes),
+        replacementStrokes: [
+          for (final stroke in page.strokes) stretch.apply(stroke)..page = page,
+        ],
+        images: imageRectChange.keys.toList(),
+        imageRectChange: imageRectChange,
+        quarterTurns: 0,
+        backgroundFitChange: background == null
+            ? null
+            : Change(previous: background.backgroundFit, current: .fill),
+      ),
+    );
+  }
+
+  /// Reshapes a page as [item] says, as one undo step.
+  void _recordPageReshape(EditorHistoryItem item) {
+    setState(() {
+      SelectLasso.currentSelect.unselect();
+      SelectBox.currentSelect.unselect();
+      _reshapePage(item);
+    });
+    history.recordChange(item);
+    autosaveAfterDelay();
+  }
+
+  /// Reshapes a page as [item] (see [EditorHistoryItemType.reshapePage])
+  /// says.
+  void _reshapePage(EditorHistoryItem item) {
+    final page = coreInfo.pages[item.pageIndex];
+    // Turning and stretching both swap the page's width and height.
+    page.size = page.size.flipped;
+    if (page.backgroundImage case final background?) {
+      background.quarterTurns =
+          (background.quarterTurns + item.quarterTurns!) % 4;
+      if (item.backgroundFitChange case final change?) {
+        background.backgroundFit = change.current;
+      }
+    }
+    _swapStrokes(item.strokes, item.replacementStrokes);
+    for (final MapEntry(key: image, value: change)
+        in item.imageRectChange!.entries) {
+      image.dstRect = change.current;
+    }
+  }
+
+  /// The page reshape that takes back [item]'s.
+  EditorHistoryItem _reversedPageReshape(EditorHistoryItem item) =>
+      item.copyWith(
+        strokes: item.replacementStrokes,
+        replacementStrokes: item.strokes,
+        imageRectChange: item.imageRectChange!.map(
+          (image, change) => MapEntry(image, change.reverse()),
+        ),
+        quarterTurns: -item.quarterTurns!,
+        backgroundFitChange: item.backgroundFitChange?.reverse(),
+      );
 
   void insertPageAfter(int pageIndex) => setState(() {
     if (coreInfo.readOnly) return;

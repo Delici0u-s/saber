@@ -206,6 +206,6 @@ class SvgEditorImage extends EditorImage {
       srcRect: srcRect,
       naturalSize: naturalSize,
       isThumbnail: isThumbnail,
-    );
+    )..quarterTurns = quarterTurns;
   }
 }
