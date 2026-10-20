@@ -374,7 +374,37 @@ shows, besides the existing box (move, resize, rotate), a handle on each anchor:
 **E. Fill.** Closed shapes can be filled (exports include it). Replaced by the *Fill* tool, see
 *Decided* below.
 
-### Order and effort
+### 15. Rotating a page (built 2026-10-21)
+
+For PDF pages you'd rather have the other way round. *Page manager → Rotate* (between clear and
+delete) opens a menu with two choices; one undo step each (`EditorHistoryItemType.reshapePage`).
+Both work on any page, not just PDF ones.
+
+- **Turn page:** a quarter turn clockwise per tap (three taps turn it the other way), like turning
+  the sheet: the PDF (or other background) and your ink and shapes turn together (shapes stay
+  editable). Width and height swap at the same scale, so a turned portrait page is about 1.41×
+  the normal width and pens keep their size relative to the PDF. Images move with the page but
+  keep their own orientation (images can't be turned), shifted back onto the page if they'd stick
+  out. For PDFs printed sideways on a portrait page.
+- **Stretch to landscape / portrait** (your request after trying *Turn page* on an upright form):
+  width and height swap, and the background, ink and images stretch to the new edges (the PDF
+  gets wider and flatter; pens keep their width). The background is set to *Fill*; switching the
+  existing *Background image fit* picker to *Contain* afterwards gives a landscape page with the
+  PDF upright and space beside it. Stretching again goes back.
+- In both, typed text doesn't turn or stretch; it flows across the new width.
+- Correction (2026-10-21): pages are shown at most at their own size (1 unit = 1 pixel at zoom
+  1.0) and only shrink on narrower screens; they don't grow to fill a wide screen.
+- PDFs now follow the background fit (fill / cover / contain) like other images; before, they
+  were always contained.
+- Saved: the page's new `w`/`h`, `qt` (quarter turns) on the background image, and the background
+  fit (`f`). Older Saber versions ignore `qt` and always contain PDFs, so they show a turned or
+  stretched page at its new size with the PDF upright and fitted inside it; nothing is lost.
+- Code: `EditorState.rotatePage`/`stretchPage`/`_reshapePage` (`pages/editor/editor.dart`),
+  `EditorImage.quarterTurns` drawn by `CanvasImage` (so the editor, thumbnails, zoom window and
+  exports all show it), the fit in `PdfEditorImage.buildImageWidget`, the menu in
+  `toolbar/editor_page_manager.dart`; test `test/rotate_page_test.dart`.
+
+## Order and effort
 
 1. **A + D** (L): the shape type, anchor handles, saving with the outline fallback. Recognised
    rectangles and circles become editable right away.
@@ -526,3 +556,4 @@ ellipse axis, snapping); the anchor bar; undo/redo; phone and desktop sizes; man
 8. Shapes (section 13): ~~step 1 (13a)~~ built (13b); ~~C (placing)~~ built (13c); next E (fill),
    then B (recognising)
 9. Section 14 (smaller requests), each planned first
+10. ~~Rotating a page (section 15)~~ (built)
