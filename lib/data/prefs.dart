@@ -20,6 +20,7 @@ import 'package:saber/data/tools/highlighter.dart';
 import 'package:saber/data/tools/line_style.dart';
 import 'package:saber/data/tools/pen.dart';
 import 'package:saber/data/tools/scribble_erase.dart';
+import 'package:saber/data/tools/shape_placer.dart';
 import 'package:saber/data/tools/tape.dart';
 import 'package:saber/pages/editor/side_by_side.dart';
 import 'package:sbn/canvas_background_pattern.dart';
@@ -274,6 +275,19 @@ class Stows {
     false,
     volatile: !_isOnMainIsolate,
   );
+
+  /// [ShapeSample.name] of the shape placed last, and how many corners a
+  /// polygon or star gets (see [ShapePlacer]).
+  final lastShapeSample = PlainStow(
+        'lastShapeSample',
+        'rectangle',
+        volatile: !_isOnMainIsolate,
+      ),
+      lastShapeCorners = PlainStow(
+        'lastShapeCorners',
+        5,
+        volatile: !_isOnMainIsolate,
+      );
 
   /// Whether scribbling over strokes with a pen erases them,
   /// see [ScribbleErase].

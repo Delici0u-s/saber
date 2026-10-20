@@ -311,6 +311,7 @@ editor:
     insert: Insert
     tools: Tools
     pdf: PDF
+    shapes: Shapes
   pens:
     fountainPen: Fountain pen
     ballpointPen: Ballpoint pen
@@ -419,6 +420,17 @@ editor:
     corner: Corner
     smooth: Smooth
     deletePoint: Delete point
+    line: Line
+    arrow: Arrow
+    doubleArrow: Double arrow
+    rectangle: Rectangle
+    ellipse: Ellipse
+    triangle: Triangle
+    parallelogram: Parallelogram
+    polygon: Polygon
+    star: Star
+    axes: Axes
+    corners: Corners
   menu:
     clearPage: Clear page $page/$totalPages
     clearAllPages: Clear all pages

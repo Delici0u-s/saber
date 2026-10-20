@@ -1203,6 +1203,9 @@ class Translations$editor$toolbar$en {
 
 	/// en: 'PDF'
 	String get pdf => 'PDF';
+
+	/// en: 'Shapes'
+	String get shapes => 'Shapes';
 }
 
 // Path: editor.pens
@@ -1552,6 +1555,39 @@ class Translations$editor$shapes$en {
 
 	/// en: 'Delete point'
 	String get deletePoint => 'Delete point';
+
+	/// en: 'Line'
+	String get line => 'Line';
+
+	/// en: 'Arrow'
+	String get arrow => 'Arrow';
+
+	/// en: 'Double arrow'
+	String get doubleArrow => 'Double arrow';
+
+	/// en: 'Rectangle'
+	String get rectangle => 'Rectangle';
+
+	/// en: 'Ellipse'
+	String get ellipse => 'Ellipse';
+
+	/// en: 'Triangle'
+	String get triangle => 'Triangle';
+
+	/// en: 'Parallelogram'
+	String get parallelogram => 'Parallelogram';
+
+	/// en: 'Polygon'
+	String get polygon => 'Polygon';
+
+	/// en: 'Star'
+	String get star => 'Star';
+
+	/// en: 'Axes'
+	String get axes => 'Axes';
+
+	/// en: 'Corners'
+	String get corners => 'Corners';
 }
 
 // Path: editor.menu

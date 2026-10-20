@@ -21,6 +21,7 @@ import 'package:saber/components/toolbar/pen_modal.dart';
 import 'package:saber/components/toolbar/ruler_modal.dart';
 import 'package:saber/components/toolbar/select_modal.dart';
 import 'package:saber/components/toolbar/selection_bar.dart';
+import 'package:saber/components/toolbar/shapes_bar.dart';
 import 'package:saber/components/toolbar/size_picker.dart';
 import 'package:saber/components/toolbar/toolbar_button.dart';
 import 'package:saber/data/editor/page.dart';
@@ -33,6 +34,7 @@ import 'package:saber/data/tools/laser_pointer.dart';
 import 'package:saber/data/tools/pen.dart';
 import 'package:saber/data/tools/pencil.dart';
 import 'package:saber/data/tools/select.dart';
+import 'package:saber/data/tools/shape_placer.dart';
 import 'package:saber/data/tools/tape.dart';
 import 'package:saber/i18n/strings.g.dart';
 
@@ -426,6 +428,27 @@ class _ToolbarState extends State<Toolbar> {
         cupertinoIcon: CupertinoIcons.text_cursor,
       ),
     );
+    final placingShapes = widget.currentTool is ShapePlacer;
+    // Picks the shape placer and shows its options, or hides or shows them.
+    void openShapes() {
+      if (placingShapes) {
+        toolOptionsType.value = toolOptionsType.value == .shapes
+            ? .hide
+            : .shapes;
+      } else {
+        widget.setTool(ShapePlacer.currentPlacer);
+        toolOptionsType.value = .shapes;
+      }
+    }
+
+    final Widget shapes = ToolbarIconButton(
+      tooltip: t.editor.toolbar.shapes,
+      selected: placingShapes,
+      enabled: !widget.readOnly,
+      onPressed: openShapes,
+      padding: buttonPadding,
+      child: const Icon(ShapePlacer.shapesIcon),
+    );
     final Widget laser = ToolbarIconButton(
       tooltip: t.editor.pens.laserPointer,
       selected: widget.currentTool == LaserPointer.currentLaserPointer,
@@ -555,7 +578,7 @@ class _ToolbarState extends State<Toolbar> {
       select,
       eraser,
     ];
-    final insert = [image, text, pdf];
+    final insert = [image, text, shapes, pdf];
     final tools = [ruler, zoomWindow, laser];
     final view = [
       ?fingerDrawing,
@@ -589,7 +612,7 @@ class _ToolbarState extends State<Toolbar> {
       .insert,
       t.editor.toolbar.insert,
       Icons.add_box_outlined,
-      active: widget.textEditing,
+      active: widget.textEditing || placingShapes,
     );
     final toolsGroup = groupButton(
       .tools,
@@ -664,6 +687,7 @@ class _ToolbarState extends State<Toolbar> {
                     setTool: widget.setTool,
                   ),
                   .eraser => EraserModal(getTool: () => Eraser.currentEraser),
+                  .shapes => const ShapesBar(),
                   .selectMode => SelectModal(setTool: widget.setTool),
                   .select => SelectionBar(
                     duplicateSelection: widget.duplicateSelection,
@@ -688,6 +712,12 @@ class _ToolbarState extends State<Toolbar> {
                         name: t.editor.toolbar.text,
                         selected: widget.textEditing,
                         onPressed: widget.toggleTextEditing,
+                      ),
+                      (
+                        icon: ShapePlacer.shapesIcon,
+                        name: t.editor.toolbar.shapes,
+                        selected: placingShapes,
+                        onPressed: openShapes,
                       ),
                       if (widget.importPdf case final importPdf?)
                         (
@@ -888,6 +918,9 @@ enum ToolOptions {
   highlighter,
   pencil,
   eraser,
+
+  /// The options of [ShapePlacer].
+  shapes,
   selectMode,
   select,
   ruler,

@@ -59,6 +59,7 @@ import 'package:saber/data/tools/select.dart';
 import 'package:saber/data/tools/select_box.dart';
 import 'package:saber/data/tools/select_lasso.dart';
 import 'package:saber/data/tools/shape_pen.dart';
+import 'package:saber/data/tools/shape_placer.dart';
 import 'package:saber/data/tools/tape.dart';
 import 'package:saber/i18n/strings.g.dart';
 import 'package:saber/pages/editor/pdf_page_chooser.dart';
@@ -236,7 +237,9 @@ class EditorState extends State<Editor> {
     } else {
       _lastNonEraserTool = tool;
     }
-    stows.lastTool.value = tool.toolId;
+    // Not the shape placer, whose id is the shape pen's (see
+    // [ShapePlacer.toolId]): notes open with the pen instead.
+    if (tool is! ShapePlacer) stows.lastTool.value = tool.toolId;
     widget.embedding?.setTool(tool);
   }
 
@@ -1740,6 +1743,7 @@ class EditorState extends State<Editor> {
 
         if (stows.autoStraightenLines.value &&
             currentTool is! ShapePen &&
+            newStroke.shape == null &&
             newStroke.isStraightLine()) {
           newStroke.convertToLine();
         }
@@ -2699,8 +2703,9 @@ class EditorState extends State<Editor> {
 
             currentTool = tool;
 
-            if (tool is Tape) {
-              // Its own, see [Tape.currentTape].
+            if (tool is Tape || tool is ShapePlacer) {
+              // Their own, see [Tape.currentTape] and
+              // [ShapePlacer.currentPlacer].
             } else if (tool is Highlighter) {
               Highlighter.currentHighlighter = tool;
             } else if (tool is Pencil) {
