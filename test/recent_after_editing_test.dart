@@ -31,70 +31,85 @@ void main() {
         );
   });
 
-  for (final edit in const [false, true])
-    for (final size in const [Size(1600, 1000), Size(400, 800)])
-      testWidgets('notes stay listed after leaving one '
-          '(${edit ? 'edited' : 'unchanged'}, $size)', (tester) async {
-        tester.view
-          ..physicalSize = size
-          ..devicePixelRatio = 1;
-        addTearDown(tester.view.reset);
-
-        final names = ['recent a', 'recent b', 'recent c'];
-        await tester.runAsync(() async {
-          stows.recentFiles.value = [];
-          for (final name in names.reversed) {
-            final note = EditorCoreInfo(filePath: '/$name')
-              ..pages.add(EditorPage());
-            await note.saveToFile(currentPageIndex: null);
-            note.dispose();
+  // Animations off: the system setting (e.g. GTK's enable-animations) that
+  // makes the card open its note without a transition.
+  for (final animations in const [true, false])
+    for (final edit in const [false, true])
+      for (final size in const [Size(1600, 1000), Size(400, 800)])
+        testWidgets('notes stay listed after leaving one '
+            '(${edit ? 'edited' : 'unchanged'}, $size, '
+            'animations ${animations ? 'on' : 'off'})', (tester) async {
+          tester.view
+            ..physicalSize = size
+            ..devicePixelRatio = 1;
+          addTearDown(tester.view.reset);
+          if (!animations) {
+            tester.platformDispatcher.accessibilityFeaturesTestValue =
+                const FakeAccessibilityFeatures(disableAnimations: true);
+            addTearDown(
+              tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+            );
           }
-        });
 
-        await tester.pumpWidget(const _RecentApp());
-        await tester.pumpAndSettle();
-        for (final name in names) {
-          expect(find.text(name), findsOneWidget, reason: '$name before');
-        }
+          final names = ['recent a', 'recent b', 'recent c'];
+          await tester.runAsync(() async {
+            stows.recentFiles.value = [];
+            for (final name in names.reversed) {
+              final note = EditorCoreInfo(filePath: '/$name')
+                ..pages.add(EditorPage());
+              await note.saveToFile(currentPageIndex: null);
+              note.dispose();
+            }
+          });
 
-        await tester.tap(find.text('recent b'));
-        for (var i = 0; i < 20; i++) {
-          await tester.runAsync(
-            () => Future.delayed(const Duration(milliseconds: 50)),
-          );
-          await tester.pump(const Duration(milliseconds: 50));
-        }
-        expect(find.byType(Editor), findsOneWidget, reason: 'the note opened');
-        if (edit) {
-          final editor = tester.state<EditorState>(find.byType(Editor))
-            ..insertPageAfter(0)
-            ..saveToFile();
-          // Leaving waits for the save, like the back button does.
-          for (var i = 0; i < 40 && editor.savingState.value != .saved; i++) {
+          await tester.pumpWidget(const _RecentApp());
+          await tester.pumpAndSettle();
+          for (final name in names) {
+            expect(find.text(name), findsOneWidget, reason: '$name before');
+          }
+
+          await tester.tap(find.text('recent b'));
+          for (var i = 0; i < 20; i++) {
             await tester.runAsync(
               () => Future.delayed(const Duration(milliseconds: 50)),
             );
             await tester.pump(const Duration(milliseconds: 50));
           }
-          expect(editor.savingState.value, SavingState.saved);
-        }
-
-        // Leave the note like the back button does.
-        await tester
-            .state<NavigatorState>(find.byType(Navigator).first)
-            .maybePop();
-        for (var i = 0; i < 20; i++) {
-          await tester.runAsync(
-            () => Future.delayed(const Duration(milliseconds: 50)),
+          expect(
+            find.byType(Editor),
+            findsOneWidget,
+            reason: 'the note opened',
           );
-          await tester.pump(const Duration(milliseconds: 50));
-        }
+          if (edit) {
+            final editor = tester.state<EditorState>(find.byType(Editor))
+              ..insertPageAfter(0)
+              ..saveToFile();
+            // Leaving waits for the save, like the back button does.
+            for (var i = 0; i < 40 && editor.savingState.value != .saved; i++) {
+              await tester.runAsync(
+                () => Future.delayed(const Duration(milliseconds: 50)),
+              );
+              await tester.pump(const Duration(milliseconds: 50));
+            }
+            expect(editor.savingState.value, SavingState.saved);
+          }
 
-        expect(find.byType(Editor), findsNothing, reason: 'the note closed');
-        for (final name in names) {
-          expect(find.text(name), findsOneWidget, reason: '$name after');
-        }
-      });
+          // Leave the note like the back button does.
+          await tester
+              .state<NavigatorState>(find.byType(Navigator).first)
+              .maybePop();
+          for (var i = 0; i < 20; i++) {
+            await tester.runAsync(
+              () => Future.delayed(const Duration(milliseconds: 50)),
+            );
+            await tester.pump(const Duration(milliseconds: 50));
+          }
+
+          expect(find.byType(Editor), findsNothing, reason: 'the note closed');
+          for (final name in names) {
+            expect(find.text(name), findsOneWidget, reason: '$name after');
+          }
+        });
 }
 
 class _RecentApp extends StatelessWidget {

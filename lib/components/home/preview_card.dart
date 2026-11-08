@@ -95,9 +95,6 @@ class _PreviewCardState extends State<PreviewCard> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final disableAnimations = MediaQuery.disableAnimationsOf(context);
-    final transitionDuration = Duration(
-      milliseconds: disableAnimations ? 0 : 300,
-    );
     final invert = theme.brightness == .dark && stows.editorAutoInvert.value;
 
     final borderWidth = MediaQuery.highContrastOf(context)
@@ -220,29 +217,57 @@ class _PreviewCardState extends State<PreviewCard> {
       ),
     );
 
+    final routeSettings = RouteSettings(
+      name: RoutePaths.editFilePath(widget.filePath),
+    );
+    Widget openEditor(BuildContext context, void Function() _) =>
+        Editor(path: widget.filePath);
+
     return ValueListenableBuilder(
       valueListenable: expanded,
       builder: (context, expanded, _) {
+        final shape = RoundedRectangleBorder(
+          side: BorderSide(
+            color: expanded
+                ? colorScheme.primary
+                : colorScheme.onSurface.withValues(alpha: 0.12),
+            width: borderWidth,
+          ),
+          borderRadius: const .all(.circular(kSaberCardRadius)),
+        );
+
+        // Without animations, OpenContainer's transition takes no time, and
+        // it then leaves an empty placeholder where the card was after the
+        // note is closed. Open the note without it instead.
+        if (disableAnimations) {
+          return Material(
+            color: colorScheme.surface,
+            shape: shape,
+            child: InkWell(
+              customBorder: shape,
+              onTap: () => Navigator.of(context)
+                  .push(
+                    MaterialPageRoute<void>(
+                      settings: routeSettings,
+                      builder: (context) => openEditor(context, () {}),
+                    ),
+                  )
+                  .then((_) => _refreshThumbnailAfterDelay()),
+              child: card,
+            ),
+          );
+        }
+
         return OpenContainer(
           clipBehavior: Clip.none,
           closedColor: colorScheme.surface,
-          closedShape: RoundedRectangleBorder(
-            side: BorderSide(
-              color: expanded
-                  ? colorScheme.primary
-                  : colorScheme.onSurface.withValues(alpha: 0.12),
-              width: borderWidth,
-            ),
-            borderRadius: const .all(.circular(kSaberCardRadius)),
-          ),
+          closedShape: shape,
           closedElevation: 0,
           closedBuilder: (context, action) => card,
           openColor: colorScheme.surface,
-          openBuilder: (context, action) => Editor(path: widget.filePath),
-          transitionDuration: transitionDuration,
-          routeSettings: RouteSettings(
-            name: RoutePaths.editFilePath(widget.filePath),
-          ),
+          openBuilder: openEditor,
+          transitionDuration: const Duration(milliseconds: 300),
+          routeSettings: routeSettings,
           onClosed: (_) => _refreshThumbnailAfterDelay(),
         );
       },
