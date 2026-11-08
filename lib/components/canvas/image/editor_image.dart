@@ -5,11 +5,10 @@ import 'dart:isolate';
 import 'dart:math';
 import 'dart:ui' as ui;
 
-import 'package:fast_image_resizer/fast_image_resizer.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:logging/logging.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:meta/meta.dart';
 import 'package:pdfrx/pdfrx.dart';
 import 'package:saber/components/canvas/_asset_cache.dart';
@@ -19,8 +18,8 @@ import 'package:saber/data/file_manager/file_manager.dart';
 import 'package:saber/data/prefs.dart';
 import 'package:saber/pages/editor/editor.dart';
 
-part 'png_editor_image.dart';
 part 'pdf_editor_image.dart';
+part 'png_editor_image.dart';
 part 'svg_editor_image.dart';
 
 /// The data for an image in the editor.
@@ -263,18 +262,20 @@ sealed class EditorImage extends ChangeNotifier {
 
   EditorImage copy();
 
-  /// Resizes [before] to fit inside [max] while maintaining aspect ratio
+  /// Resizes [before] to fit inside [max] while maintaining aspect ratio.
+  ///
+  /// The image is allowed to be 1px over [max] for rounding tolerance.
   @visibleForTesting
   static Size resize(Size before, Size max) {
     double width = before.width,
         height = before.height,
         aspectRatio = width / height;
 
-    if (width > max.width) {
+    if (width > max.width + 1) {
       width = max.width;
       height = width / aspectRatio;
     }
-    if (height > max.height) {
+    if (height > max.height + 1) {
       height = max.height;
       width = height * aspectRatio;
     }

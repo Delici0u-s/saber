@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// A round button for picking one of a tool's modes in a toolbar modal,
 /// e.g. stroke/area eraser or lasso/box selection.

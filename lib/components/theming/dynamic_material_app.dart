@@ -1,19 +1,22 @@
 import 'dart:io';
 
+import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:dynamic_color/dynamic_color.dart';
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_localizations/flutter_localizations.dart'
+    show GlobalWidgetsLocalizations;
 import 'package:flutter_quill/flutter_quill.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:saber/components/theming/saber_theme.dart';
 import 'package:saber/components/theming/yaru_builder.dart';
 import 'package:saber/data/prefs.dart';
 import 'package:saber/i18n/extensions/redirecting_localization_delegate.dart';
 import 'package:saber/i18n/strings.g.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:yaru/yaru.dart';
 
 class DynamicMaterialApp extends StatefulHookWidget {
   const new({
@@ -29,6 +32,8 @@ class DynamicMaterialApp extends StatefulHookWidget {
 
   @override
   State<DynamicMaterialApp> createState() => DynamicMaterialAppState();
+
+  static final useYaruTitlebar = Platform.isWindows;
 
   static final ValueNotifier<bool> _isFullscreen = ValueNotifier(false);
   static bool get isFullscreen => _isFullscreen.value;
@@ -136,14 +141,14 @@ class DynamicMaterialAppState extends State<DynamicMaterialApp>
           title: widget.title,
           router: widget.router,
           themeMode: themeMode,
-          theme: (platform == .android && lightColorScheme != null)
+          theme: (platform.isMaterialNative && lightColorScheme != null)
               ? SaberTheme.createTheme(lightColorScheme, platform)
               : SaberTheme.createThemeFromSeed(
                   lightColorScheme?.primary ?? widget.defaultSwatch,
                   .light,
                   platform,
                 ),
-          darkTheme: (platform == .android && darkColorScheme != null)
+          darkTheme: (platform.isMaterialNative && darkColorScheme != null)
               ? SaberTheme.createTheme(darkColorScheme, platform)
               : SaberTheme.createThemeFromSeed(
                   darkColorScheme?.primary ?? widget.defaultSwatch,
@@ -161,6 +166,31 @@ class DynamicMaterialAppState extends State<DynamicMaterialApp>
     SystemChrome.setSystemUIChangeCallback(null);
 
     super.dispose();
+  }
+}
+
+class const _WindowsTitleBarWrapper({required final Widget? child})
+    extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: YaruWindowTitleBar(
+        title: Row(
+          children: [
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: SvgPicture.asset('assets/icon/icon.svg'),
+            ),
+            const SizedBox(width: 8),
+            const Text('Saber'),
+          ],
+        ),
+        centerTitle: false,
+        buttonPadding: const EdgeInsets.only(bottom: 1),
+      ),
+      body: child,
+    );
   }
 }
 
@@ -225,6 +255,12 @@ class ExplicitlyThemedApp extends StatelessWidget {
       highContrastTheme: highContrastTheme,
       highContrastDarkTheme: highContrastDarkTheme,
       debugShowCheckedModeBanner: false,
+      builder: _mergeBuilders([
+        if (DynamicMaterialApp.useYaruTitlebar)
+          (_, child) => _WindowsTitleBarWrapper(child: child),
+        // ignore: deprecated_member_use (It's marked as deprecated since it's a temporary migration helper.)
+        (_, child) => MaterialUiCompatibilityBridge(child: child!),
+      ]),
     );
   }
 }
@@ -235,5 +271,17 @@ extension on ColorScheme {
     seedColor: primary,
     surface: brightness == .light ? Colors.white : Colors.black,
     contrastLevel: 1,
+  );
+}
+
+/// Merges multiple [TransitionBuilder]s into a single [TransitionBuilder].
+///
+/// The first builder is applied to the child first, then
+/// the second builder is applied to the result of the first, and so on.
+TransitionBuilder _mergeBuilders(List<TransitionBuilder> builders) {
+  return builders.fold(
+    (_, child) => child!,
+    (mergedBuilders, next) =>
+        (context, child) => next(context, mergedBuilders(context, child)),
   );
 }

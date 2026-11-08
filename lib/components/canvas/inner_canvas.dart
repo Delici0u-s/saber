@@ -1,6 +1,6 @@
 import 'package:defer_pointer/defer_pointer.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:one_dollar_unistroke_recognizer/one_dollar_unistroke_recognizer.dart';
 import 'package:saber/components/canvas/_canvas_background_painter.dart';
 import 'package:saber/components/canvas/_canvas_painter.dart';
@@ -10,6 +10,7 @@ import 'package:saber/components/canvas/image/editor_image.dart';
 import 'package:saber/components/canvas/select_result.dart';
 import 'package:saber/data/editor/editor_core_info.dart';
 import 'package:saber/data/editor/page.dart';
+import 'package:saber/data/extensions/color_extensions.dart';
 import 'package:saber/data/prefs.dart';
 import 'package:saber/i18n/strings.g.dart';
 import 'package:sbn/canvas_background_pattern.dart';
@@ -80,10 +81,17 @@ class InnerCanvas extends StatefulWidget {
           : coreInfo.backgroundPattern,
       lineHeight: coreInfo.lineHeight,
       lineThickness: coreInfo.lineThickness,
-      primaryColor: colorScheme.primary,
-      secondaryColor: colorScheme.secondary,
+      primaryColor: pageColorIn(context, colorScheme.primary),
+      secondaryColor: pageColorIn(context, colorScheme.secondary),
     );
   }
+
+  /// [color] (from the theme) as drawn on a page: in dark mode, a page that
+  /// isn't inverted stays light, so the colour is inverted to stand out on it.
+  static Color pageColorIn(BuildContext context, Color color) =>
+      color.withInversion(
+        !stows.editorAutoInvert.value && Theme.of(context).brightness == .dark,
+      );
 
   @override
   State<InnerCanvas> createState() => _InnerCanvasState();
@@ -95,6 +103,7 @@ class _InnerCanvasState extends State<InnerCanvas> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final invert = InnerCanvas.invertIn(context);
+    final primaryColor = InnerCanvas.pageColorIn(context, colorScheme.primary);
 
     if (widget.coreInfo.pages.isEmpty) {
       return SizedBox(width: widget.width, height: widget.height);
@@ -143,7 +152,7 @@ class _InnerCanvasState extends State<InnerCanvas> {
           laserStrokes: page.laserStrokes,
           currentStroke: widget.currentStroke,
           currentSelection: widget.currentSelection,
-          primaryColor: colorScheme.primary,
+          primaryColor: primaryColor,
           page: page,
           showPageIndicator: widget.showPageIndicator,
           pageIndex: widget.pageIndex,

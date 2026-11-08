@@ -1,7 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:saber/components/canvas/_canvas_painter.dart';
 import 'package:saber/components/canvas/_stroke.dart';
 import 'package:saber/components/canvas/canvas_image.dart';

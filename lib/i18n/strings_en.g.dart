@@ -1668,7 +1668,7 @@ class Translations$editor$photoPdfError$en {
 	String get title => 'Error';
 
 	/// en: 'PDF files cannot be added as image. Use "Import > PDF" for that.'
-	String get message => 'PDF files cannot be added as image. Use "Import > PDF" for that.';
+	String get message => 'PDF files cannot be added as image. Use "${_root.editor.menu.import} > PDF" for that.';
 }
 
 // Path: editor.readOnlyBanner

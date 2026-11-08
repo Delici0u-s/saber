@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:saber/components/canvas/_stroke.dart';
 import 'package:saber/data/prefs.dart';
 import 'package:saber/data/tools/pen.dart';

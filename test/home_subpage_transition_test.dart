@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:saber/data/flavor_config.dart';
 import 'package:saber/data/prefs.dart';
 import 'package:saber/data/routes.dart';
@@ -40,7 +40,7 @@ void main() {
 
         await tester.tap(find.byIcon(Icons.settings));
         await tester.pump();
-        await tester.pump(const Duration(milliseconds: 150));
+        await tester.pump(const Duration(milliseconds: 100));
 
         expect(
           [find.text('Welcome to Saber'), find.text('Logged out')],

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:saber/components/toolbar/line_style_picker.dart';
 import 'package:saber/components/toolbar/opacity_picker.dart';
 import 'package:saber/components/toolbar/size_picker.dart';

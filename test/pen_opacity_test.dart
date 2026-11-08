@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:saber/components/toolbar/opacity_picker.dart';
 import 'package:saber/data/editor/page.dart';
 import 'package:saber/data/flavor_config.dart';

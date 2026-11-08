@@ -1,5 +1,7 @@
-import 'package:flutter/material.dart';
+import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:perfect_freehand/perfect_freehand.dart';
 import 'package:saber/components/canvas/_asset_cache.dart';
 import 'package:saber/components/canvas/_stroke.dart';
@@ -171,7 +173,7 @@ class TestImage extends PngEditorImage {
     : super(
         id: -1,
         extension: '.png',
-        imageProvider: null,
+        imageProvider: MemoryImage(Uint8List(0)),
         pageIndex: 0,
         pageSize: const Size(100, 100),
         onMoveImage: null,

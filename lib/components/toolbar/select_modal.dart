@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:saber/components/toolbar/tool_mode_button.dart';
 import 'package:saber/data/extensions/axis_extensions.dart';
 import 'package:saber/data/prefs.dart';

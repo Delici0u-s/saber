@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:saber/data/prefs.dart';
 import 'package:saber/data/tools/pen.dart';
 import 'package:saber/i18n/strings.g.dart';
@@ -20,7 +20,7 @@ class Highlighter extends Pen {
 
   static const alpha = 100;
 
-  static Pen currentHighlighter = Highlighter();
+  static var currentHighlighter = Highlighter();
 
   static const highlighterIcon = FontAwesomeIcons.highlighter;
 }

@@ -1,6 +1,6 @@
 import 'dart:math';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:saber/components/canvas/image/editor_image.dart';
 import 'package:saber/i18n/strings.g.dart';
 
@@ -117,7 +117,7 @@ class _ImageCropDialogState extends State<ImageCropDialog> {
                             Positioned.fromRect(
                               rect: imageRect,
                               child: Image(
-                                image: widget.image.imageProvider!,
+                                image: widget.image.imageProvider,
                                 fit: BoxFit.fill,
                               ),
                             ),

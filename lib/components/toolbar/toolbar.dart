@@ -1,14 +1,14 @@
 import 'dart:io';
 
 import 'package:collapsible/collapsible.dart';
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
+import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:keybinder/keybinder.dart';
 import 'package:material_symbols_icons/symbols.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:saber/components/canvas/ruler.dart';
 import 'package:saber/components/canvas/zoom_window.dart';
 import 'package:saber/components/theming/adaptive_icon.dart';

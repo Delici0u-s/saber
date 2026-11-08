@@ -2,17 +2,18 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:collapsible/collapsible.dart';
+import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_quill/flutter_quill.dart' as flutter_quill;
 import 'package:keybinder/keybinder.dart';
 import 'package:logging/logging.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:path/path.dart' as p;
 import 'package:pdfrx/pdfrx.dart';
 import 'package:saber/components/canvas/_asset_cache.dart';
@@ -2536,11 +2537,12 @@ class EditorState extends State<Editor> {
     for (final format in formats.keys) {
       if (!reader.canProvide(format)) continue;
       final progress = reader.getFile(format, (file) async {
-        final stream = file.getStream();
-        final List<int> bytes = [];
-        await for (final chunk in stream) {
-          bytes.addAll(chunk);
+        final builder = BytesBuilder(copy: false);
+        await for (final chunk in file.getStream()) {
+          builder.add(chunk);
         }
+
+        final bytes = builder.takeBytes();
         if (bytes.isEmpty) {
           log.warning('Pasted empty file: $file (${formats[format]})');
           return;
@@ -2553,10 +2555,7 @@ class EditorState extends State<Editor> {
           extension = formats[format]!;
         }
 
-        photoInfos.add((
-          bytes: Uint8List.fromList(bytes),
-          extension: extension,
-        ));
+        photoInfos.add((bytes: bytes, extension: extension));
       });
       if (progress != null) progresses.add(progress);
     }
@@ -3124,7 +3123,7 @@ class EditorState extends State<Editor> {
         history.recordChange(
           EditorHistoryItem(
             type: .insertPage,
-            pageIndex: pageIndex,
+            pageIndex: pageIndex + 1,
             strokes: const [],
             images: const [],
             page: newPage,

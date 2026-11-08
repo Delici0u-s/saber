@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:pdfrx/pdfrx.dart';
 import 'package:saber/i18n/strings.g.dart';
 import 'package:saber/pages/editor/pdf_page_chooser.dart';
@@ -106,6 +106,7 @@ class _FakePage implements PdfPage {
         PdfAnnotationRenderingMode.annotationAndForms,
     int flags = PdfPageRenderFlags.none,
     PdfPageRenderCancellationToken? cancellationToken,
+    PdfPageRenderPriority? priority,
   }) async => null;
 
   @override
