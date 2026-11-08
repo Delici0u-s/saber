@@ -20,9 +20,6 @@ class const AppInfo({super.key}) extends StatelessWidget {
   static final Uri licenseUrl = Uri.parse(
     'https://github.com/saber-notes/saber/blob/main/LICENSE.md',
   );
-  static final Uri releasesUrl = Uri.parse(
-    'https://github.com/saber-notes/saber/releases',
-  );
 
   static String get info => [
     // Tests use static values to improve reducibility

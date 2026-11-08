@@ -15,11 +15,19 @@ import 'package:saber/data/version.dart' as version;
 abstract class UpdateManager {
   static final log = Logger('UpdateManager');
 
+  /// The GitHub repository whose `main` branch is checked for updates.
+  /// Personal fork: this fork, not saber-notes/saber, so the update notice
+  /// only shows when this fork has a newer version than the one installed.
+  static const repository = 'Delici0u-s/saber';
+
   static final Uri versionUrl = Uri.parse(
-    'https://raw.githubusercontent.com/saber-notes/saber/main/lib/data/version.dart',
+    'https://raw.githubusercontent.com/$repository/main/lib/data/version.dart',
   );
   static final Uri apiUrl = Uri.parse(
-    'https://api.github.com/repos/saber-notes/saber/releases/latest',
+    'https://api.github.com/repos/$repository/releases/latest',
+  );
+  static final Uri releasesUrl = Uri.parse(
+    'https://github.com/$repository/releases',
   );
 
   /// The availability of an update.
@@ -211,7 +219,7 @@ abstract class UpdateManager {
     assert(newestVersion != null);
 
     final url =
-        'https://raw.githubusercontent.com/saber-notes/saber/main/'
+        'https://raw.githubusercontent.com/$repository/main/'
         'metadata/$localeCode/changelogs/$newestVersion.txt';
     log.info('Downloading changelog from $url');
 
