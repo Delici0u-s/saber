@@ -58,8 +58,9 @@ class PdfEditorImage extends EditorImage {
     File? pdfFile;
     if (assetIndex != null) {
       if (inlineAssets == null) {
-        pdfFile = FileManager.getFile(
-          '$sbnPath${Editor.extension}.$assetIndex',
+        pdfFile = assetCache.noteAsset(
+          FileManager.getFile('$sbnPath${Editor.extension}.$assetIndex'),
+          assetIndex,
         );
         pdfBytes = assetCache.get(pdfFile);
       } else {

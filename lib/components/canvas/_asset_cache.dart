@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/painting.dart';
 import 'package:logging/logging.dart';
@@ -28,6 +29,23 @@ class AssetCache {
   /// Whether items from the cache can be removed:
   /// set to false during file save.
   var allowRemovingAssets = true;
+
+  /// The note's own asset files (e.g. `note.sbn2.3`) that images were loaded
+  /// from, mapped to their number.
+  final Map<String, int> _noteAssetNumbers = {};
+
+  /// The note's own asset files that images were loaded from, mapped to their
+  /// number. Images (also deleted ones, which undo can bring back) keep
+  /// reading these files, so saving keeps them at their numbers, see
+  /// [OrderedAssetCache.new].
+  Map<String, int> get noteAssetNumbers => Map.unmodifiable(_noteAssetNumbers);
+
+  /// Returns [file], the note's own asset number [number], and remembers that
+  /// an image was loaded from it (see [noteAssetNumbers]).
+  File noteAsset(File file, int number) {
+    _noteAssetNumbers[file.path] = number;
+    return file;
+  }
 
   /// Marks [image] as currently visible.
   ///
@@ -74,26 +92,71 @@ class AssetCache {
   void dispose() {
     _images.clear();
     _cache.clear();
+    _noteAssetNumbers.clear();
     pdfDocumentCache.dispose();
   }
 }
 
 class OrderedAssetCache {
+  /// Numbers the assets of a note as they are added.
+  ///
+  /// [keptNumbers] maps the note's own asset files that are already on disk
+  /// to their numbers (see [AssetCache.noteAssetNumbers]). Each of them keeps
+  /// its number, and the other assets get numbers none of them has, so the
+  /// files stay as they are and [changedIndices] leaves them out. Without
+  /// [keptNumbers] (e.g. for an archive), assets are numbered from 0.
+  new({Map<String, int> keptNumbers = const {}})
+    : _keptNumbers = keptNumbers,
+      _reserved = keptNumbers.values.toSet();
+
   final log = Logger('OrderedAssetCache');
 
-  final List<Object> _cache = [];
+  /// The assets by number; null where no asset has that number (yet).
+  final List<Object?> _cache = [];
+
+  final Map<String, int> _keptNumbers;
+
+  /// The numbers of [_keptNumbers]: only their own file may have them.
+  final Set<int> _reserved;
+
+  /// Numbers whose file is already on disk (from [_keptNumbers]).
+  final Set<int> _kept = {};
+
+  /// Puts [item] at the lowest number that's free and returns it.
+  int _add(Object item) {
+    var index = 0;
+    while ((index < _cache.length && _cache[index] != null) ||
+        _reserved.contains(index)) {
+      index++;
+    }
+    while (index >= _cache.length) {
+      _cache.add(null);
+    }
+    _cache[index] = item;
+    return index;
+  }
 
   /// Adds [file] to the cache if not already present
   /// and returns the index of the added item.
   int addFile(File file) {
+    final kept = _keptNumbers[file.path];
+    if (kept != null) {
+      while (kept >= _cache.length) {
+        _cache.add(null);
+      }
+      _cache[kept] = file;
+      _kept.add(kept);
+      log.fine('OrderedAssetCache.addFile($file): kept index $kept');
+      return kept;
+    }
+
     final index = _cache.indexWhere(
       (other) => other is File && other.path == file.path,
     );
     log.fine('OrderedAssetCache.addFile($file): index = $index');
 
     if (index == -1) {
-      _cache.add(file);
-      return _cache.length - 1;
+      return _add(file);
     } else {
       return index;
     }
@@ -111,8 +174,7 @@ class OrderedAssetCache {
     log.fine('OrderedAssetCache.addBytes(...): index = $index');
 
     if (index == -1) {
-      _cache.add(bytes);
-      return _cache.length - 1;
+      return _add(bytes);
     } else {
       return index;
     }
@@ -125,8 +187,7 @@ class OrderedAssetCache {
     log.fine('OrderedAssetCache.addString(...): index = $index');
 
     if (index == -1) {
-      _cache.add(string);
-      return _cache.length - 1;
+      return _add(string);
     } else {
       return index;
     }
@@ -148,10 +209,18 @@ class OrderedAssetCache {
     }
   }
 
-  /// The number of (distinct) items in the cache.
-  int get length => _cache.length;
-  bool get isEmpty => _cache.isEmpty;
-  bool get isNotEmpty => _cache.isNotEmpty;
+  /// The number of asset files the note needs: one more than the highest
+  /// number in use or kept (see [OrderedAssetCache.new]). Files with a higher
+  /// number aren't needed any more.
+  int get length => max(_cache.length, _reserved.fold(-1, max) + 1);
+
+  /// The numbers whose file has to be written by [getBytes]. Kept files are
+  /// already right, and numbers without an asset keep their file as it is.
+  Iterable<int> get changedIndices sync* {
+    for (var i = 0; i < _cache.length; i++) {
+      if (_cache[i] != null && !_kept.contains(i)) yield i;
+    }
+  }
 
   /// Converts the item at position [index]
   /// to bytes and returns them.

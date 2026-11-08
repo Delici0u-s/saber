@@ -54,8 +54,9 @@ class SvgEditorImage extends EditorImage {
     File? svgFile;
     if (assetIndex != null) {
       if (inlineAssets == null) {
-        svgFile = FileManager.getFile(
-          '$sbnPath${Editor.extension}.$assetIndex',
+        svgFile = assetCache.noteAsset(
+          FileManager.getFile('$sbnPath${Editor.extension}.$assetIndex'),
+          assetIndex,
         );
         svgString = assetCache.get(svgFile);
       } else {

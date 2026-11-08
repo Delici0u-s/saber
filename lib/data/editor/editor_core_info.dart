@@ -469,9 +469,17 @@ class EditorCoreInfo {
 
   /// Returns the json map and a list of assets.
   /// Assets are stored in separate files.
-  (Map<String, dynamic> json, OrderedAssetCache) toJson() {
+  ///
+  /// With [keepAssetNumbers], the assets loaded from this note's files keep
+  /// their numbers (see [OrderedAssetCache.new]); use it when saving to the
+  /// note's own files.
+  (Map<String, dynamic> json, OrderedAssetCache) toJson({
+    bool keepAssetNumbers = false,
+  }) {
     /// This will be populated in various [toJson] methods.
-    final OrderedAssetCache assets = OrderedAssetCache();
+    final assets = OrderedAssetCache(
+      keptNumbers: keepAssetNumbers ? assetCache.noteAssetNumbers : const {},
+    );
 
     final json = {
       'v': sbnVersion,
@@ -517,12 +525,49 @@ class EditorCoreInfo {
     return ZipEncoder().encode(archive);
   }
 
+  /// Writes the note to its file ([filePath]) and its assets to the
+  /// numbered files next to it.
+  ///
+  /// If [currentPageIndex] isn't null,
+  /// [initialPageIndex] will be updated to it before saving.
+  Future<void> saveToFile({required int? currentPageIndex}) async {
+    final filePath = this.filePath + Editor.extension;
+    final Uint8List bson;
+    final OrderedAssetCache assets;
+    assetCache.allowRemovingAssets = false;
+    try {
+      (bson, assets) = saveToBinary(
+        currentPageIndex: currentPageIndex,
+        keepAssetNumbers: true,
+      );
+    } finally {
+      assetCache.allowRemovingAssets = true;
+    }
+    // Read everything before writing anything, in case an asset comes from a
+    // file that is about to be written.
+    final changed = assets.changedIndices.toList();
+    final changedBytes = await Future.wait(changed.map(assets.getBytes));
+    await Future.wait([
+      FileManager.writeFile(filePath, bson, awaitWrite: true),
+      for (final (i, index) in changed.indexed)
+        FileManager.writeFile(
+          '$filePath.$index',
+          changedBytes[i],
+          awaitWrite: true,
+        ),
+      FileManager.removeUnusedAssets(filePath, numAssets: assets.length),
+    ]);
+  }
+
   /// Returns the bson bytes and the assets.
+  ///
+  /// See [toJson] for [keepAssetNumbers].
   (Uint8List bson, OrderedAssetCache assets) saveToBinary({
     required int? currentPageIndex,
+    bool keepAssetNumbers = false,
   }) {
     initialPageIndex = currentPageIndex ?? initialPageIndex;
-    final (json, assets) = toJson();
+    final (json, assets) = toJson(keepAssetNumbers: keepAssetNumbers);
     final bson = BsonCodec.serialize(json);
     return (bson.byteList, assets);
   }

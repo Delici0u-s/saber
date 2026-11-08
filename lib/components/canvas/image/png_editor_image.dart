@@ -35,8 +35,9 @@ class PngEditorImage extends EditorImage {
     File? imageFile;
     if (assetIndex != null) {
       if (inlineAssets == null) {
-        imageFile = FileManager.getFile(
-          '$sbnPath${Editor.extension}.$assetIndex',
+        imageFile = assetCache.noteAsset(
+          FileManager.getFile('$sbnPath${Editor.extension}.$assetIndex'),
+          assetIndex,
         );
         bytes = assetCache.get(imageFile);
       } else {

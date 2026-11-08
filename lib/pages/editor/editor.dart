@@ -16,7 +16,6 @@ import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:path/path.dart' as p;
 import 'package:pdfrx/pdfrx.dart';
-import 'package:saber/components/canvas/_asset_cache.dart';
 import 'package:saber/components/canvas/_stroke.dart';
 import 'package:saber/components/canvas/canvas.dart';
 import 'package:saber/components/canvas/canvas_gesture_detector.dart';
@@ -2172,31 +2171,8 @@ class EditorState extends State<Editor> {
     await _renameFileNow();
 
     final filePath = coreInfo.filePath + Editor.extension;
-    final Uint8List bson;
-    final OrderedAssetCache assets;
-    coreInfo.assetCache.allowRemovingAssets = false;
     try {
-      (bson, assets) = coreInfo.saveToBinary(
-        currentPageIndex: currentPageIndex,
-      );
-    } finally {
-      coreInfo.assetCache.allowRemovingAssets = true;
-    }
-    try {
-      await Future.wait([
-        FileManager.writeFile(filePath, bson, awaitWrite: true),
-        for (int i = 0; i < assets.length; ++i)
-          assets
-              .getBytes(i)
-              .then(
-                (bytes) => FileManager.writeFile(
-                  '$filePath.$i',
-                  bytes,
-                  awaitWrite: true,
-                ),
-              ),
-        FileManager.removeUnusedAssets(filePath, numAssets: assets.length),
-      ]);
+      await coreInfo.saveToFile(currentPageIndex: currentPageIndex);
       savingState.value = .saved;
       history.markLastChangeAsSaved();
       if (stows.syncOnSave.value) SyncScheduler.pull();
