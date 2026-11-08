@@ -21,6 +21,8 @@
 >   while watching the server): pages, images and unchanged PDFs stay on screen. ([`6d6d1e7`](https://github.com/Delici0u-s/saber/commit/6d6d1e71))
 > - **Sync loading:** a note open while it syncs no longer goes blank ("failed to load"): downloads
 >   finish writing before the note reloads, and a reload that fails keeps the note as it was. ([`8a432da`](https://github.com/Delici0u-s/saber/commit/8a432dab))
+> - **Recent:** with the system's animations off, the note just closed no longer disappears from
+>   *Recent* until switching tabs.
 > - **Blank PDFs:** PDFs and images no longer go blank (also in exports) after adding one before
 >   others or reordering pages: saving used to renumber their files on every autosave until all
 >   held the same PDF. Their files now keep their numbers while the note is open. ([`a99807b`](https://github.com/Delici0u-s/saber/commit/a99807b5))

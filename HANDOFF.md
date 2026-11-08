@@ -17,8 +17,8 @@ On branch `merge-upstream` (fast-forward `main` to it once tested on the devices
   stays installed until you remove it (uninstalling deletes its local notes: sync first).
 - `d48ec32`: the update check reads this fork (`UpdateManager.repository`). `version_test`'s
   changelog download fails until `main` with the new version is pushed.
-- Not reproduced: on desktop a note sometimes missing from *Recent* after leaving a note
-  (`test/recent_after_editing_test.dart` covers the plain flow and passes). Side finding:
+- Fixed: a note missing from *Recent* after closing it, with the system's animations off
+  (`OpenContainer` with a zero transition; `test/recent_after_editing_test.dart`). Side finding:
   `PreviewCard` loads its thumbnail in `initState` only and the grid isn't keyed by file, so after
   a reorder a card can show another note's thumbnail.
 - Recovering a note whose assets were already overwritten: the asset files of an older copy
