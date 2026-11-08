@@ -5,6 +5,8 @@
 #   scripts/dev.sh linux   [build|install|uninstall|run] [--debug]   (default: run)
 #
 # Release builds by default (debug builds are much slower on device).
+# 'android' builds and installs "Saber (personalized)", an app of its own next to the official
+# Saber (app id com.adilhanney.saber.personalized, its own notes and settings).
 # 'linux install' installs a "Saber (personalized)" for the current user, alongside any other
 # Saber: own app id, settings and notes folder (~/Documents/Saber (personalized)), no update
 # check. 'linux uninstall' removes it again but keeps its notes and settings.
@@ -12,7 +14,7 @@
 #   FLUTTER_ROOT=$HOME/Documents/Sources/flutter
 #   JAVA_HOME=$HOME/.gradle/jdks/<some-jdk>
 #   ANDROID_SERIAL=<adb device id>   # only needed with several devices
-#   LINUX_INSTALL_LABEL=personalized # names the linux install (app id, menu entry, notes folder)
+#   INSTALL_LABEL=personalized       # names the installed app (app id, app name, notes folder)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -24,7 +26,7 @@ die() { echo "error: $*" >&2; exit 1; }
 info() { echo "==> $*"; }
 
 usage() {
-  sed -n '2,15p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  sed -n '2,17p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
   exit "${1:-0}"
 }
 
@@ -61,6 +63,14 @@ project_value() { # <file> <regex with one capture group>
   sed -nE "s/$2/\1/p" "$ROOT/$1" | head -n1
 }
 
+# The label that tells the installed app apart from the official Saber (part of its app id).
+# LINUX_INSTALL_LABEL is its old name.
+install_label() {
+  local label="${INSTALL_LABEL:-${LINUX_INSTALL_LABEL:-personalized}}"
+  [[ "$label" =~ ^[A-Za-z0-9_]+$ ]] || die "INSTALL_LABEL may only use letters, digits and _ (it's part of the app id)"
+  echo "$label"
+}
+
 # --- android ---------------------------------------------------------------------
 # Flutter puts $JAVA_HOME/bin first on the build's PATH. If that is /usr/bin (JAVA_HOME=/usr),
 # a distro rustc there shadows rustup's, which breaks the Rust-based native assets. So only
@@ -90,6 +100,18 @@ adb_device() {
   esac
 }
 
+# Refuse an APK whose app id isn't <package>: installing it could replace another Saber.
+check_apk_package() { # <apk> <package>
+  local sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Android/Sdk}}" aapt2 actual
+  aapt2="$(find "$sdk/build-tools" -name aapt2 -type f 2>/dev/null | sort -V | tail -n1)"
+  if [[ -z "$aapt2" ]]; then
+    info "warning: aapt2 not found under $sdk/build-tools, can't check the APK's app id"
+    return
+  fi
+  actual="$("$aapt2" dump packagename "$1")"
+  [[ "$actual" == "$2" ]] || die "the APK's app id is $actual, expected $2; not installing it"
+}
+
 android_target_platform() { # <adb serial>
   local abi
   abi="$(adb -s "$1" shell getprop ro.product.cpu.abi | tr -d '\r')"
@@ -105,9 +127,12 @@ android() {
   [[ "$ACTION" != "uninstall" ]] || die "'uninstall' isn't supported for android"
   pick_java_home
   check_path_dependencies
-  local serial platform package apk
+  local serial platform package apk label
+  label="$(install_label)"
   package="$(project_value android/app/build.gradle.kts '^\s*applicationId\s*=\s*"([^"]+)".*')"
   [[ -n "$package" ]] || die "couldn't read applicationId from android/app/build.gradle.kts"
+  # build.gradle.kts appends the label to the app id and name (see SABER_INSTALL_LABEL there).
+  package="$package.$label"
   apk="$ROOT/build/app/outputs/flutter-apk/app-$MODE.apk"
 
   if [[ "$ACTION" == "build" ]]; then
@@ -117,8 +142,9 @@ android() {
     platform="$(android_target_platform "$serial")"
   fi
 
-  info "Building $MODE APK for $platform (JAVA_HOME=$JAVA_HOME)"
-  (cd "$ROOT" && flutter build apk "--$MODE" --target-platform "$platform")
+  info "Building $MODE APK of $package for $platform (JAVA_HOME=$JAVA_HOME)"
+  (cd "$ROOT" && SABER_INSTALL_LABEL="$label" flutter build apk "--$MODE" --target-platform "$platform")
+  check_apk_package "$apk" "$package"
   [[ "$ACTION" == "build" ]] && { info "Built $apk"; return; }
 
   info "Installing on $serial (keeps app data)"
@@ -170,8 +196,8 @@ linux_build() { # [extra flutter args...]
 
 # The separately installed app: everything is derived from the project and LINUX_INSTALL_LABEL.
 linux_install_paths() {
-  local label="${LINUX_INSTALL_LABEL:-personalized}"
-  [[ "$label" =~ ^[A-Za-z0-9_]+$ ]] || die "LINUX_INSTALL_LABEL may only use letters, digits and _ (it's part of the app id)"
+  local label
+  label="$(install_label)"
   local base_id data_home
   base_id="$(project_value linux/CMakeLists.txt '^set\(APPLICATION_ID "([^"]+)"\).*')"
   [[ -n "$base_id" ]] || die "couldn't read APPLICATION_ID from linux/CMakeLists.txt"

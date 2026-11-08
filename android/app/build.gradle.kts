@@ -11,6 +11,12 @@ plugins {
 val keystoreProperties = Properties()
 val keystorePropertiesFile = rootProject.file("key.properties")
 val fallbackKeystorePropertiesFile = rootProject.file("fallback-key.properties")
+// Personal fork: `scripts/dev.sh android` sets SABER_INSTALL_LABEL (e.g. "personalized") to build
+// an app that installs next to the official Saber, with id "<applicationId>.<label>" and the
+// name "<appName> (<label>)". Without it, the build is the official app.
+val installLabel = System.getenv("SABER_INSTALL_LABEL")?.takeIf { it.isNotEmpty() }
+val appName = "Saber"
+
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 } else if (fallbackKeystorePropertiesFile.exists()) {
@@ -30,6 +36,9 @@ android {
     defaultConfig {
         // https://flutter.dev/to/review-gradle-config
         applicationId = "com.adilhanney.saber"
+        if (installLabel != null) applicationIdSuffix = ".$installLabel"
+        manifestPlaceholders["appName"] =
+            if (installLabel == null) appName else "$appName ($installLabel)"
         // If you change this minSdk, also update patches/pre/remove_proprietary_dependencies.sh.
         minSdk = 26
         targetSdk = flutter.targetSdkVersion
