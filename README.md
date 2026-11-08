@@ -2,8 +2,8 @@
 > **Personal fork:** not the official Saber. For the real app, see
 > [saber-notes/saber](https://github.com/saber-notes/saber). I just applied some pull requests/features/https://github.com/steveruizok/perfect-freehand-dart/pull/27.
 >
-> This is a local optimisation for my own use. It **won't be maintained**: no updates from upstream,
-> no support, no releases. Everything is on `main`. These features are all good enough to use, but not good/quality enough for the actual saber repo
+> This is a local optimisation for my own use. It **won't be maintained**: no support, no
+> releases; upstream is merged in now and then (last: v1.37.1, [`e1fb63c`](https://github.com/Delici0u-s/saber/commit/e1fb63c6)). Everything is on `main`. These features are all good enough to use, but not good/quality enough for the actual saber repo
 >
 > Commit links point to where each change was made.
 >
@@ -21,6 +21,9 @@
 >   while watching the server): pages, images and unchanged PDFs stay on screen. ([`6d6d1e7`](https://github.com/Delici0u-s/saber/commit/6d6d1e71))
 > - **Sync loading:** a note open while it syncs no longer goes blank ("failed to load"): downloads
 >   finish writing before the note reloads, and a reload that fails keeps the note as it was. ([`8a432da`](https://github.com/Delici0u-s/saber/commit/8a432dab))
+> - **Blank PDFs:** PDFs and images no longer go blank (also in exports) after adding one before
+>   others or reordering pages: saving used to renumber their files on every autosave until all
+>   held the same PDF. Their files now keep their numbers while the note is open. ([`a99807b`](https://github.com/Delici0u-s/saber/commit/a99807b5))
 >
 > **Features**
 > - **Pressure-sized dots:** a tap's dot is as big as the hardest pressure applied, and taps are
@@ -77,9 +80,9 @@
 > - **Finer settings:** line height and highlighter size step by 1; faster options for auto-save (2s)
 >   and shape recognition (0.25s). ([`5462702`](https://github.com/Delici0u-s/saber/commit/54627021), [`55119c5`](https://github.com/Delici0u-s/saber/commit/55119c51))
 > - **Build script:** `scripts/dev.sh android|linux [build|install|run] [--debug]`. Machine-specific
->   paths go in `scripts/dev.local.env` (see the script's header). Android installs keep app data and
->   refuse to replace a differently signed (e.g. Play Store) install. `linux install`/`uninstall` add or remove it
->   next to the official Saber (see *Installing this fork* below). ([`83378a2`](https://github.com/Delici0u-s/saber/commit/83378a22), [`d66613d`](https://github.com/Delici0u-s/saber/commit/d66613dc), [`e731873`](https://github.com/Delici0u-s/saber/commit/e7318730), [`5a852a2`](https://github.com/Delici0u-s/saber/commit/5a852a27))
+>   paths go in `scripts/dev.local.env` (see the script's header). `android` and `linux install`
+>   install *Saber (personalized)* next to the official Saber; `linux uninstall` removes it
+>   (see *Installing this fork* below). ([`af0d6bd`](https://github.com/Delici0u-s/saber/commit/af0d6bdc), [`83378a2`](https://github.com/Delici0u-s/saber/commit/83378a22), [`d66613d`](https://github.com/Delici0u-s/saber/commit/d66613dc), [`e731873`](https://github.com/Delici0u-s/saber/commit/e7318730), [`5a852a2`](https://github.com/Delici0u-s/saber/commit/5a852a27))
 >
 > **Merged upstream pull requests**
 > - [#1829](https://github.com/saber-notes/saber/pull/1829): move selections between pages ([`ef7b0a5`](https://github.com/Delici0u-s/saber/commit/ef7b0a58))
@@ -102,9 +105,11 @@
 >   your user, next to any other Saber: app menu entry, `saber-personalized` command, its own settings
 >   and its own notes folder `~/Documents/Saber (personalized)`. Rerun it to update;
 >   `scripts/dev.sh linux uninstall` removes the app but keeps the notes and settings.
-> - **Android:** `scripts/dev.sh android` builds, installs and launches on the connected device.
->   It replaces the official Saber (same app id) and refuses if that one is signed differently,
->   because replacing it would delete its notes.
+> - **Android:** `scripts/dev.sh android` builds, installs and launches *Saber (personalized)* on
+>   the connected device, an app of its own next to the official Saber (app id
+>   `com.adilhanney.saber.personalized`, its own notes and settings).
+> - **Update notice:** checks this fork's `main`, not saber-notes/saber, so it only shows when the
+>   fork has a newer version than the installed build. ([`d48ec32`](https://github.com/Delici0u-s/saber/commit/d48ec32a))
 
 # <img src="https://github.com/saber-notes/saber/raw/main/assets/icon/icon.png" width="30" height="30" alt="Logo"> Saber
 

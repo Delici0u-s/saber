@@ -3,6 +3,32 @@
 Where things stand, what's left, and how to set up a new machine. The feature plans (with every
 decision you made) are in `FEATURE_PLANS.md`; read it together with this.
 
+## 2026-11-08: upstream merge, blank PDFs, separate Android app
+
+On branch `merge-upstream` (fast-forward `main` to it once tested on the devices):
+
+- `e1fb63c` merges upstream v1.37.1. Kept the fork's editor/history/selection code (it already had
+  #1829 and #1823), ported upstream's real fixes into it, moved the fork's files to
+  `material_ui`/`cupertino_ui` like upstream. Upstream's type-safe history rewrite was skipped.
+- `a99807b` fixes PDFs/images going blank: see `AssetCache.noteAssetNumbers` and
+  `OrderedAssetCache.new`; `test/asset_numbers_test.dart`.
+- `af0d6bd`: `scripts/dev.sh android` installs `com.adilhanney.saber.personalized`
+  ("Saber (personalized)") next to the official app. The fork build that used the official id
+  stays installed until you remove it (uninstalling deletes its local notes: sync first).
+- `d48ec32`: the update check reads this fork (`UpdateManager.repository`). `version_test`'s
+  changelog download fails until `main` with the new version is pushed.
+- Not reproduced: on desktop a note sometimes missing from *Recent* after leaving a note
+  (`test/recent_after_editing_test.dart` covers the plain flow and passes). Side finding:
+  `PreviewCard` loads its thumbnail in `initState` only and the grid isn't keyed by file, so after
+  a reorder a card can show another note's thumbnail.
+- Recovering a note whose assets were already overwritten: the asset files of an older copy
+  (e.g. the Flathub Saber's `~/Documents/Saber`, or Nextcloud versions) can be put back, mapped by
+  the numbers in each note's JSON (`a` per image/background).
+- Gotcha: don't run `flutter test` while an APK builds; tests regenerate
+  `GeneratedPluginRegistrant.java` with dev-only plugins and the build fails (`integration_test`).
+  After plugin version bumps, stale Kotlin builds fail with unresolved references: delete
+  `build/<plugin>`.
+
 ## State
 
 All work is committed. Earlier features in `8a432da`; shapes in `2ee6acd` (editable shapes, tap to
@@ -139,7 +165,7 @@ Known limitations, accepted for now:
   under `~/.local/share`. Notes go to `~/Documents/Saber (personalized)` (dart-define
   `LOCAL_DIRECTORY_NAME`), settings to `~/.local/share/<id>`; the Flathub Saber keeps
   `~/Documents/Saber`. Both sync to the same Nextcloud `Saber` folder if you log in to both.
-  Update check is off. `LINUX_INSTALL_LABEL` in `dev.local.env` renames all of it.
+  Update check is off. `INSTALL_LABEL` in `dev.local.env` renames all of it (also on Android).
 - **Android builds on the laptop** (set up 2026-10-19, no Android Studio): Google's command-line
   tools in `~/Android/Sdk/cmdline-tools/latest`, NDK via `sdkmanager "ndk;28.2.13676358"`,
   licenses via `flutter doctor --android-licenses`, and `JAVA_HOME=/usr/lib/jvm/java-21-openjdk`
