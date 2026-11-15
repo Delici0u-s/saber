@@ -632,11 +632,18 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                   ],
                 ),
-                SettingsSwitch(
-                  title: t.settings.prefLabels.autoStraightenLines,
-                  subtitle: t.settings.prefDescriptions.autoStraightenLines,
-                  icon: Icons.straighten,
-                  pref: stows.autoStraightenLines,
+                // Hold to shape replaces auto straightening while it's on.
+                ListenableBuilder(
+                  listenable: stows.holdToShapeDelay,
+                  builder: (context, _) => stows.holdToShapeDelay.value < 0
+                      ? SettingsSwitch(
+                          title: t.settings.prefLabels.autoStraightenLines,
+                          subtitle:
+                              t.settings.prefDescriptions.autoStraightenLines,
+                          icon: Icons.straighten,
+                          pref: stows.autoStraightenLines,
+                        )
+                      : const SizedBox.shrink(),
                 ),
                 SettingsSubtitle(subtitle: t.settings.prefCategories.advanced),
                 if (isSentryAvailable) const SettingsSentryConsent(),

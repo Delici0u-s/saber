@@ -1747,7 +1747,10 @@ class EditorState extends State<Editor> {
           return;
         }
 
+        // With hold to shape on, only holding makes a line (or other shape),
+        // so a stroke isn't straightened before the hold delay.
         if (stows.autoStraightenLines.value &&
+            stows.holdToShapeDelay.value < 0 &&
             currentTool is! ShapePen &&
             newStroke.shape == null &&
             newStroke.isStraightLine()) {
