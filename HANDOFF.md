@@ -108,7 +108,8 @@ Saved format: `shape: 'path'` (`sa` anchors, `ss` smooth indices, `sc` closed, `
      other axis types (e.g. both directions through the origin, 3D axes), and similar maths
      features. Plan first.
 2. **Section 16 of the plans (2026-11-15):** the Recent bug on Linux (16a, bug: straight to
-   code), then changing selected strokes from the pen tab, colour/tool options not lingering,
+   code), scribble to erase rarely working (16j: collect real scribbles, loosen recognition and
+   what it erases), then changing selected strokes from the pen tab, colour/tool options not lingering,
    a pen outline preview, exact/offset/scaled page patterns with side padding, log paper,
    finer ruler marks when zoomed, and repeating/dividing parts (needs thinking through).
 3. **Smaller requests** (section 14 of the plans, your list from 2026-10-21; plan each first):

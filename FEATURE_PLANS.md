@@ -665,6 +665,38 @@ add more parts. Questions to settle before a design:
   into n equal parts, with marks or lines) and *Array* (repeat the selection n times with a
   spacing), both one-offs; templates per part later.
 
+### 16j. Scribble to erase rarely works (bug/tuning, S–M)
+
+Your report: it "kinda sucks and rarely works". Likely causes, from the code
+(`tools/scribble_erase.dart`):
+
+- **Recognising the scribble is too strict:** it needs 4 turns, and every stretch between turns
+  must span at least half of the whole scribble's extent (`minLegFraction`). Real scribbles vary
+  in width, drift sideways along a word and get smaller towards the end, so many don't count.
+- **What it erases is too strict:** a stroke is erased only if it lies *mostly inside* the
+  scribble's convex hull (the lasso's `minPercentInside`). Scribbling across a word that sticks
+  out above or below, or over the middle of a long line, erases nothing.
+- No feedback: nothing shows that a scribble was recognised until the pen lifts, so a failed one
+  just stays as ink.
+
+**Plan:**
+1. Collect real scribbles first: with a debug log (or by saving the failed ones from a note
+   you scribble in), record ~20 of your scribbles that should erase and some handwriting/shading
+   that shouldn't, and turn them into tests (they're just point lists).
+2. Recognition: judge each stretch against the *local* width of the scribble (its neighbours),
+   not the whole extent; allow drift along the main direction; 3 turns may be enough for a short
+   word.
+3. Erasing: erase strokes the scribble *crosses* a lot (e.g. a large share of the stroke's
+   length lies within the scribble's band, or the scribble crosses it several times), not only
+   strokes inside its hull; never erase strokes it barely touches.
+4. Feedback (optional): once the scribble is recognised while drawing, the strokes it would
+   erase fade, so you know before lifting.
+- **Question:** do you want the feedback in 4? *Recommended:* yes, it makes the gesture
+  predictable.
+- **Question:** should it also erase images/text it covers? *Recommended:* no, strokes only (as
+  decided in section 6).
+- Bug/tuning work: after collecting the scribbles, straight to code.
+
 
 ## Order
 
@@ -679,4 +711,5 @@ add more parts. Questions to settle before a design:
    then B (recognising)
 9. Section 14 (smaller requests), each planned first
 10. ~~Rotating a page (section 15)~~ (built)
-11. Section 16 (2026-11-15): 16a (Recent bug) first, then your choice among 16b–16i
+11. Section 16 (2026-11-15): 16a (Recent bug) and 16j (scribble to erase) first, then your choice
+    among 16b–16i
