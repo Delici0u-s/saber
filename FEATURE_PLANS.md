@@ -532,7 +532,7 @@ ellipse axis, snapping); the anchor bar; undo/redo; phone and desktop sizes; man
   costs the most there (drawing, scrolling, zooming, selecting) and fix the worst first. Measure
   before and after on such a note.
 - ~~**Moving small selections:**~~ built 2026-11-15 (`cc86af5`): a move handle on a stem below
-  a selection box too small to grab inside.
+  every selection box (at first only on small ones; on all since your request the same day).
 - **Dot gap for dotted lines:** a setting for the distance between the dots (today fixed in
   `LineStyle.dotted` in `tools/line_style.dart`, relative to the stroke's size).
 - **Ruler transparency:** a slider for the ruler's opacity (in the ruler's menu).
@@ -547,7 +547,7 @@ ellipse axis, snapping); the anchor bar; undo/redo; phone and desktop sizes; man
 ## 16. Requests from 2026-11-15 (plans, for confirmation)
 
 Built straight away that day (bug fix and requested tweak): *auto straighten lines* no longer
-pre-empts hold to shape (`7a45359`), and small selections get a move handle (`cc86af5`).
+pre-empts hold to shape (`7a45359`), and selections get a move handle (`cc86af5`, on every selection since).
 
 ### 16a. Bug: a closed note still vanishes from Recent on Linux
 

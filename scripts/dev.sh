@@ -158,6 +158,7 @@ android() {
     fi
     die "install failed"
   fi
+  info "Installed $package"
 
   if [[ "$ACTION" == "run" ]]; then
     info "Launching $package"

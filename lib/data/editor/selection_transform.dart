@@ -23,8 +23,8 @@ enum SelectionHandle {
   /// On a stem above the top: rotates the selection.
   rotate(Alignment.topCenter),
 
-  /// On a stem below the bottom, on a box too small to grab inside (see
-  /// [SelectionBox.hasMoveHandle]): moves the selection.
+  /// On a stem below the bottom: moves the selection (also one too small to
+  /// grab inside).
   move(Alignment.bottomCenter);
 
   new(this.alignment);
@@ -96,18 +96,8 @@ class SelectionBox {
     return bounds;
   }
 
-  /// Whether the box is too small to grab inside, between its handles'
-  /// grab areas, so it gets a [SelectionHandle.move] handle.
-  bool get hasMoveHandle =>
-      min(rect.width, rect.height) < 2 * grabRadius * pixel;
-
-  Iterable<SelectionHandle> get handles => SelectionHandle.values.where(
-    (handle) => switch (handle) {
-      .rotate => rotatable,
-      .move => hasMoveHandle,
-      _ => true,
-    },
-  );
+  Iterable<SelectionHandle> get handles =>
+      SelectionHandle.values.where((handle) => handle != .rotate || rotatable);
 
   /// Where [handle] is on the page, moved by [transform].
   Offset handlePosition(SelectionHandle handle) =>

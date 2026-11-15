@@ -58,7 +58,8 @@
 > - **Place shapes:** *Insert → Shapes*: lines, arrows, rectangles, ellipses, triangles,
 >   parallelograms, polygons, stars and axes, dragged out from corner to corner (Shift keeps
 >   proportions). ([`5078bde`](https://github.com/Delici0u-s/saber/commit/5078bdeb))
-> - **Move handle:** a selection too small to grab gets a handle below it to move it.
+> - **Move handle:** every selection has a handle below it to move it (handy when it's too
+>   small to grab).
 >   ([`cc86af5`](https://github.com/Delici0u-s/saber/commit/cc86af51))
 > - **Tap to select** a stroke or image with the selection tool; box selection dragged left to right
 >   takes what's completely inside, right to left everything it touches. ([`2ee6acd`](https://github.com/Delici0u-s/saber/commit/2ee6acd1), [`969c959`](https://github.com/Delici0u-s/saber/commit/969c9594))

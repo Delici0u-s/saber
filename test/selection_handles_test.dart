@@ -158,7 +158,7 @@ void main() {
     final select = SelectBox.currentSelect;
     expect(select.selectResult.strokes, hasLength(1));
     final box = select.selectResult.box!;
-    expect(box.hasMoveHandle, isTrue);
+    expect(box.handles, contains(SelectionHandle.move));
 
     final handle = box.handlePosition(.move);
     await drag(onScreen(handle), onScreen(handle + const Offset(100, 50)));
@@ -170,18 +170,15 @@ void main() {
     expect(after.size.width, moreOrLessEquals(before.size.width, epsilon: 0.5));
   });
 
-  test('only a box too small to grab inside has a move handle', () {
+  test('every box has a move handle', () {
     const pixel = 1.0;
     const small = SelectionBox(
       rect: Rect.fromLTWH(0, 0, 10, 200),
       pixel: pixel,
     );
-    const big = SelectionBox(
-      rect: Rect.fromLTWH(0, 0, 200, 200),
-      pixel: pixel,
-    );
+    const big = SelectionBox(rect: Rect.fromLTWH(0, 0, 200, 200), pixel: pixel);
     expect(small.handles, contains(SelectionHandle.move));
-    expect(big.handles, isNot(contains(SelectionHandle.move)));
+    expect(big.handles, contains(SelectionHandle.move));
     expect(small.handleAt(small.handlePosition(.move)), SelectionHandle.move);
   });
 }
