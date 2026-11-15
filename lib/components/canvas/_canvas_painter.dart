@@ -417,25 +417,34 @@ class CanvasPainter extends CustomPainter {
       dashPath(outline, dashArray: CircularIntervalList([dash, dash])),
       line,
     );
-    if (box.rotatable) {
+    for (final (handle, side) in const [
+      (SelectionHandle.rotate, SelectionHandle.top),
+      (SelectionHandle.move, SelectionHandle.bottom),
+    ]) {
+      if (!box.handles.contains(handle)) continue;
       canvas.drawLine(
-        box.handlePosition(.top),
-        box.handlePosition(.rotate),
+        box.handlePosition(side),
+        box.handlePosition(handle),
         line,
       );
     }
 
     final background = Paint()..color = invert ? Colors.black : Colors.white;
-    final radius = SelectionBox.handleRadius * pixel;
     for (final handle in box.handles) {
       final center = box.handlePosition(handle);
-      // The rotate handle is filled, so it stands out from the others.
+      final radius =
+          (handle == .move
+              ? SelectionBox.moveHandleRadius
+              : SelectionBox.handleRadius) *
+          pixel;
+      // Handles on a stem are filled, so they stand out from the others.
       canvas.drawCircle(
         center,
         radius,
-        handle == .rotate ? (Paint()..color = primaryColor) : background,
+        handle.isOnStem ? (Paint()..color = primaryColor) : background,
       );
       canvas.drawCircle(center, radius, line);
+      if (handle == .move) _drawIcon(canvas, Icons.open_with, center, radius);
     }
 
     _drawShapeHandles(canvas, line, background);
@@ -457,6 +466,27 @@ class CanvasPainter extends CustomPainter {
       canvas,
       box.handlePosition(.rotate) +
           Offset(SelectionBox.grabRadius * pixel, -label.height / 2),
+    );
+  }
+
+  /// [icon] centred on [center], fitting in a circle of [radius], in the
+  /// colour that stands out on [primaryColor].
+  void _drawIcon(Canvas canvas, IconData icon, Offset center, double radius) {
+    final painter = TextPainter(
+      text: TextSpan(
+        text: String.fromCharCode(icon.codePoint),
+        style: TextStyle(
+          fontFamily: icon.fontFamily,
+          package: icon.fontPackage,
+          fontSize: radius * sqrt2,
+          color: invert ? Colors.black : Colors.white,
+        ),
+      ),
+      textDirection: .ltr,
+    )..layout();
+    painter.paint(
+      canvas,
+      center - Offset(painter.width / 2, painter.height / 2),
     );
   }
 

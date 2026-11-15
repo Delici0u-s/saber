@@ -5,6 +5,7 @@ import 'package:saber/components/canvas/_stroke.dart';
 import 'package:saber/data/editor/selection_transform.dart';
 import 'package:saber/data/file_manager/file_manager.dart';
 import 'package:saber/data/flavor_config.dart';
+import 'package:saber/data/tools/pen.dart';
 import 'package:saber/data/tools/select_box.dart';
 import 'package:saber/i18n/strings.g.dart';
 import 'package:saber/pages/editor/editor.dart';
@@ -107,5 +108,80 @@ void main() {
     final still = box().handlePosition(.topLeft);
     await drag(onScreen(still), onScreen(still));
     expect(strokes().single, same(original));
+  });
+
+  testGoldens('a small selection is moved by its move handle', (tester) async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    FlavorConfig.setup();
+    setupMockPathProvider();
+    setupMockPrinting();
+    await tester.runAsync(FileManager.init);
+
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: ScreenshotApp(
+          device: GoldenScreenshotDevices.androidPhone.device,
+          home: Editor(),
+        ),
+      ),
+    );
+    final state = tester.state<EditorState>(find.byType(Editor));
+    addTearDown(state.cancelAutosaveAndMarkSaved);
+    await tester.pumpAndSettle();
+
+    final page = state.coreInfo.pages.first;
+    List<Stroke> strokes() => state.coreInfo.pages.first.strokes;
+    Offset onScreen(Offset onPage) => page.renderBox!.localToGlobal(onPage);
+    Future<void> drag(Offset from, Offset to) async {
+      final gesture = await tester.startGesture(from);
+      for (var t = 1; t <= 10; t++) {
+        await gesture.moveTo(Offset.lerp(from, to, t / 10)!);
+        await tester.pump(const Duration(milliseconds: 8));
+      }
+      await gesture.up();
+      await tester.pumpAndSettle();
+    }
+
+    // A short dash, selected with a box around it.
+    state.currentTool = Pen.currentPen;
+    await drag(
+      onScreen(const Offset(400, 400)),
+      onScreen(const Offset(410, 410)),
+    );
+    expect(strokes(), hasLength(1));
+    final before = strokes().single.lowQualityPath.getBounds();
+    state.currentTool = SelectBox.currentSelect;
+    await drag(
+      onScreen(const Offset(300, 300)),
+      onScreen(const Offset(520, 520)),
+    );
+    final select = SelectBox.currentSelect;
+    expect(select.selectResult.strokes, hasLength(1));
+    final box = select.selectResult.box!;
+    expect(box.hasMoveHandle, isTrue);
+
+    final handle = box.handlePosition(.move);
+    await drag(onScreen(handle), onScreen(handle + const Offset(100, 50)));
+    final after = strokes().single.lowQualityPath.getBounds();
+    expect(
+      after.center - before.center,
+      offsetMoreOrLessEquals(const Offset(100, 50), epsilon: 1),
+    );
+    expect(after.size.width, moreOrLessEquals(before.size.width, epsilon: 0.5));
+  });
+
+  test('only a box too small to grab inside has a move handle', () {
+    const pixel = 1.0;
+    const small = SelectionBox(
+      rect: Rect.fromLTWH(0, 0, 10, 200),
+      pixel: pixel,
+    );
+    const big = SelectionBox(
+      rect: Rect.fromLTWH(0, 0, 200, 200),
+      pixel: pixel,
+    );
+    expect(small.handles, contains(SelectionHandle.move));
+    expect(big.handles, isNot(contains(SelectionHandle.move)));
+    expect(small.handleAt(small.handlePosition(.move)), SelectionHandle.move);
   });
 }

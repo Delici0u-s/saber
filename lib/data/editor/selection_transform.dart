@@ -21,7 +21,11 @@ enum SelectionHandle {
   left(Alignment.centerLeft),
 
   /// On a stem above the top: rotates the selection.
-  rotate(Alignment.topCenter);
+  rotate(Alignment.topCenter),
+
+  /// On a stem below the bottom, on a box too small to grab inside (see
+  /// [SelectionBox.hasMoveHandle]): moves the selection.
+  move(Alignment.bottomCenter);
 
   new(this.alignment);
 
@@ -30,6 +34,9 @@ enum SelectionHandle {
 
   /// Whether dragging it resizes keeping proportions (a corner).
   bool get isCorner => alignment.x != 0 && alignment.y != 0;
+
+  /// Whether it's on a stem off the box instead of on the box.
+  bool get isOnStem => this == rotate || this == move;
 }
 
 /// The box around a selection, with handles to resize and rotate it.
@@ -57,11 +64,14 @@ class SelectionBox {
   final SelectionTransform transform;
 
   /// How big handles are drawn (radius), how far from their middle they can
-  /// be grabbed, and how far above the top the rotate handle is, in screen
-  /// pixels: big enough for a finger.
+  /// be grabbed, and how far the rotate and move handles are from the box,
+  /// in screen pixels: big enough for a finger.
   static const handleRadius = kMinInteractiveDimension / 8,
       grabRadius = kMinInteractiveDimension / 2,
-      rotateStem = kMinInteractiveDimension;
+      stem = kMinInteractiveDimension;
+
+  /// The move handle is drawn bigger, with an icon in it.
+  static const moveHandleRadius = handleRadius * 2;
 
   /// A resized side is never shorter than this, in screen pixels.
   static const minSize = kMinInteractiveDimension;
@@ -86,16 +96,28 @@ class SelectionBox {
     return bounds;
   }
 
-  Iterable<SelectionHandle> get handles =>
-      SelectionHandle.values.where((handle) => handle != .rotate || rotatable);
+  /// Whether the box is too small to grab inside, between its handles'
+  /// grab areas, so it gets a [SelectionHandle.move] handle.
+  bool get hasMoveHandle =>
+      min(rect.width, rect.height) < 2 * grabRadius * pixel;
+
+  Iterable<SelectionHandle> get handles => SelectionHandle.values.where(
+    (handle) => switch (handle) {
+      .rotate => rotatable,
+      .move => hasMoveHandle,
+      _ => true,
+    },
+  );
 
   /// Where [handle] is on the page, moved by [transform].
   Offset handlePosition(SelectionHandle handle) =>
       transform.map(_handleBefore(handle));
 
-  Offset _handleBefore(SelectionHandle handle) => handle == .rotate
-      ? rect.topCenter - Offset(0, rotateStem * pixel)
-      : handle.alignment.withinRect(rect);
+  Offset _handleBefore(SelectionHandle handle) => switch (handle) {
+    .rotate => rect.topCenter - Offset(0, stem * pixel),
+    .move => rect.bottomCenter + Offset(0, stem * pixel),
+    _ => handle.alignment.withinRect(rect),
+  };
 
   /// The box's corners, clockwise from the top left, moved by [transform].
   List<Offset> get corners => [
@@ -119,11 +141,14 @@ class SelectionBox {
   }
 
   /// What dragging [handle] from [start] to [current] does to the selection.
+  /// Not for [SelectionHandle.move], which moves the selection like
+  /// dragging it does.
   SelectionTransform drag(
     SelectionHandle handle,
     Offset start,
     Offset current,
   ) {
+    assert(handle != .move, 'the move handle moves the selection instead');
     if (handle == .rotate) {
       final center = rect.center;
       final turn = (current - center).direction - (start - center).direction;

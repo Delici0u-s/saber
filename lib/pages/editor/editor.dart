@@ -821,6 +821,8 @@ class EditorState extends State<Editor> {
           shapeHandle: shapeHandle.$1,
           start: position,
         );
+      } else if (boxHandle == .move) {
+        // drag selection in onDrawUpdate, like dragging it inside
       } else if (boxHandle case final handle?) {
         // resize or rotate in onDrawUpdate
         _selectionChange = _SelectionChange(
