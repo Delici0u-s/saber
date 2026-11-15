@@ -531,8 +531,8 @@ ellipse axis, snapping); the anchor bar; undo/redo; phone and desktop sizes; man
 - **Performance:** it only slows down on really long notes with a lot on them; find out what
   costs the most there (drawing, scrolling, zooming, selecting) and fix the worst first. Measure
   before and after on such a note.
-- **Moving small selections:** a small selection is hard to grab without hitting a handle or
-  missing it; add a move handle (e.g. below the selection's box) that drags the whole selection.
+- ~~**Moving small selections:**~~ built 2026-11-15 (`cc86af5`): a move handle on a stem below
+  a selection box too small to grab inside.
 - **Dot gap for dotted lines:** a setting for the distance between the dots (today fixed in
   `LineStyle.dotted` in `tools/line_style.dart`, relative to the stroke's size).
 - **Ruler transparency:** a slider for the ruler's opacity (in the ruler's menu).
@@ -543,6 +543,128 @@ ellipse axis, snapping); the anchor bar; undo/redo; phone and desktop sizes; man
 - **Custom screen density:** a setting to type in the screen's density (the ruler's real size comes
   from `ScreenDensity` now), with an optional help popup: it shows a line of a given length, you
   measure it with a real ruler and enter what you measured, and the density is worked out from that.
+
+## 16. Requests from 2026-11-15 (plans, for confirmation)
+
+Built straight away that day (bug fix and requested tweak): *auto straighten lines* no longer
+pre-empts hold to shape (`7a45359`), and small selections get a move handle (`cc86af5`).
+
+### 16a. Bug: a closed note still vanishes from Recent on Linux
+
+Still seen after the 2026-11-08 fix (`4583815`), which only helps when Flutter is told that
+animations are off. On KDE, Flutter's Linux embedder may not see GTK's `enable-animations`
+(it reads it through the desktop portal's GNOME settings), so `MediaQuery.disableAnimations`
+could be false there and the real cause something else.
+
+- **Plan:** log `disableAnimations` and the card's hidden/placeholder state in the installed app,
+  reproduce with your steps (open any note from Recent, go back, logged in to Nextcloud),
+  then fix the actual cause with a test that fails first. Bug fix: goes straight to code.
+- Note: the build installed until 2026-11-15 may not have had the fix in it (built while it was
+  being written); the reinstall of 2026-11-15 does.
+
+### 16b. Changing selected strokes from the pen tab (S–M)
+
+Today a selection can be recoloured (colour bar) and thickened (slider in the selection bar).
+
+- **Plan:** with a selection, tapping a pen tab (pen, pencil, highlighter) opens that tab's
+  options as usual, but its changes apply to the selected strokes too: line style, opacity,
+  size, and the pen type (fountain/ballpoint/pencil/highlighter, which changes how a stroke is
+  drawn). The selection stays; one undo step per change. The pen itself also takes the setting,
+  as it does today, so the next stroke matches.
+- **Question:** should picking a different pen *type* convert the selection (e.g. ballpoint →
+  pencil), or only line style/opacity/size? *Recommended:* all of them; a stroke's look is
+  its tool plus its options.
+- **Question:** should tapping a pen tab keep the selection (and the selection tool) active?
+  *Recommended:* yes while the selection exists; tapping the canvas outside it ends it and
+  the pen draws again.
+
+### 16c. Colour and tool options not both lingering (S)
+
+Today the colour bar and the tool options (pen tab etc.) open and close independently, so the
+colour bar stays open after you're done with the pen.
+
+- **Plan:** the colour bar may open on top of the tool options (as now), but closing the tool
+  options, or switching to a tool without colours (eraser, selection without a selection…),
+  closes it too. Opening the colour bar alone (button or Ctrl+C) still works.
+- **Question:** should picking a colour also close the colour bar? *Recommended:* no, you often
+  pick a few in a row; it closes with the tool options instead.
+
+### 16d. Pen outline preview (S)
+
+The eraser shows a dashed circle of its size while erasing.
+
+- **Plan:** a circle of the pen's size (pressure 0.5 width) where the pen or mouse hovers over
+  the page (stylus hover on Android, mouse on desktop), hidden while drawing. Same look as the
+  eraser outline (dashed, theme colour).
+- **Question:** also while drawing (showing the tip under the pen)? *Recommended:* no, the
+  stroke itself shows that; hover only.
+- **Question:** a setting to turn it off? *Recommended:* no setting unless it annoys you.
+
+### 16e. Page patterns: exact spacing, offset and scale (M)
+
+Today the spacing (`lineHeight`) is a whole number of page units (≈ 0.21 mm on A4, so 5 mm is
+5.04 mm), every pattern starts `2 × lineHeight` from the top, and lines run edge to edge.
+Printing with a margin shrinks the page, and with it the lines.
+
+- **Plan, one *Pattern* section in the note's background settings:**
+  - spacing in mm with decimals (stored as a double; older Saber rounds it);
+  - **print scale**: a factor (e.g. 0.97) or "my printer's printable area is W × H mm", from
+    which the factor follows, so a printed 5 mm grid measures 5 mm;
+  - **offset**: where the first line/grid line starts (top and left), in mm;
+  - **side padding** (16g): space left and right (and top/bottom?) without pattern.
+- **Question:** per note, or a default for new notes plus per note? *Recommended:* per note,
+  with *Use as default for new notes*.
+- **Question:** should the print scale apply only to exports/printing (the screen stays true
+  size) or also on screen? *Recommended:* only when exporting/printing.
+- Older Saber versions ignore the new fields and draw the pattern as before.
+
+### 16f. Logarithmic pattern (S–M)
+
+- **Plan:** a new pattern, *log paper*: semi-log (log x, linear y), log-log, and the other
+  semi-log (linear x, log y), with a chosen number of decades across the page (1–5) and the
+  usual 1–9 subdivisions per decade, major lines at the decades.
+- **Question:** which of the three do you need, and should the decade count be a setting?
+  *Recommended:* all three as one pattern with a *Log axes* choice; decades per page as a
+  number next to the spacing.
+
+### 16g. Pattern side padding (S)
+
+- Part of 16e: a margin on the left/right (and maybe top/bottom) where no pattern is drawn,
+  in mm. **Question:** same for all four sides or each separately? *Recommended:* left/right
+  and top/bottom as two values.
+
+### 16h. Ruler: finer marks and labels as you zoom (M)
+
+Today marks are every mm with labels every cm; marks closer than 3 px are left out when zoomed
+out, but zooming in adds nothing.
+
+- **Plan:** the ruler picks its levels from how much room there is on screen, like a map's
+  scale: zoomed out, cm marks only (labels every 5 or 10 cm if they'd overlap); normal, mm
+  marks with cm labels; zoomed in, mm labels too (smaller, e.g. "5" between cm labels, or
+  every mm), and further in, 0.5 mm and 0.1 mm marks. Lengths and label sizes follow the
+  level, so the most important marks stay the longest and boldest. Same for inches (1/32,
+  1/64) and points.
+- **Question:** labels for sub-units as "5" (mm within the cm) or "1.5" (cm with decimals)?
+  *Recommended:* mm as plain small numbers ("5"), cm stay as they are.
+
+### 16i. Repeating patterns for dividing and adding parts (L, needs thinking through)
+
+Your idea: patterns that repeat *n* times, to split a page or an area into equal parts and to
+add more parts. Questions to settle before a design:
+
+- **What gets divided?** The whole page (e.g. 3 equal columns or rows, each with its own
+  pattern), a drawn area (select a box → divide it into n), or a line (mark n equal steps)?
+- **What's in each part?** An empty frame, a copy of a template (e.g. a table cell, an exercise
+  box), or a pattern (lines/grid) per part?
+- **Adding parts:** append a part (the page grows / a new page), or insert between parts and
+  re-divide so all stay equal?
+- **Editable afterwards?** Changing n later re-divides (needs the parts to be one object, like
+  shapes are), or it's a one-off that leaves plain lines/strokes?
+- Related tools elsewhere: GoodNotes/Notability templates, OneNote's "rule lines", CAD's
+  *divide* and *array*. A first step could be *Divide* in the selection menu (a box or line
+  into n equal parts, with marks or lines) and *Array* (repeat the selection n times with a
+  spacing), both one-offs; templates per part later.
+
 
 ## Order
 
@@ -557,3 +679,4 @@ ellipse axis, snapping); the anchor bar; undo/redo; phone and desktop sizes; man
    then B (recognising)
 9. Section 14 (smaller requests), each planned first
 10. ~~Rotating a page (section 15)~~ (built)
+11. Section 16 (2026-11-15): 16a (Recent bug) first, then your choice among 16b–16i

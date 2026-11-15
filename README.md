@@ -21,6 +21,9 @@
 >   while watching the server): pages, images and unchanged PDFs stay on screen. ([`6d6d1e7`](https://github.com/Delici0u-s/saber/commit/6d6d1e71))
 > - **Sync loading:** a note open while it syncs no longer goes blank ("failed to load"): downloads
 >   finish writing before the note reloads, and a reload that fails keeps the note as it was. ([`8a432da`](https://github.com/Delici0u-s/saber/commit/8a432dab))
+> - **Hold to shape:** a straight stroke no longer turns into a line the moment the pen lifts
+>   (*Auto straighten lines*); with hold to shape on, it waits for the hold, shows the preview
+>   and forms on release. ([`7a45359`](https://github.com/Delici0u-s/saber/commit/7a453594))
 > - **Recent:** with the system's animations off, the note just closed no longer disappears from
 >   *Recent* until switching tabs.
 > - **Blank PDFs:** PDFs and images no longer go blank (also in exports) after adding one before
@@ -55,6 +58,8 @@
 > - **Place shapes:** *Insert → Shapes*: lines, arrows, rectangles, ellipses, triangles,
 >   parallelograms, polygons, stars and axes, dragged out from corner to corner (Shift keeps
 >   proportions). ([`5078bde`](https://github.com/Delici0u-s/saber/commit/5078bdeb))
+> - **Move handle:** a selection too small to grab gets a handle below it to move it.
+>   ([`cc86af5`](https://github.com/Delici0u-s/saber/commit/cc86af51))
 > - **Tap to select** a stroke or image with the selection tool; box selection dragged left to right
 >   takes what's completely inside, right to left everything it touches. ([`2ee6acd`](https://github.com/Delici0u-s/saber/commit/2ee6acd1), [`969c959`](https://github.com/Delici0u-s/saber/commit/969c9594))
 > - **Scribble to erase** and **double-tap to switch to the eraser**, both in the settings. ([`8a432da`](https://github.com/Delici0u-s/saber/commit/8a432dab))

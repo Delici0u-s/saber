@@ -107,12 +107,17 @@ Saved format: `shape: 'path'` (`sa` anchors, `ss` smooth indices, `sc` closed, `
    - **Axes with markers and more** (your request, later): tick marks and labels on the axes,
      other axis types (e.g. both directions through the origin, 3D axes), and similar maths
      features. Plan first.
-2. **Smaller requests** (section 14 of the plans, your list from 2026-10-21; plan each first):
-   performance on really long notes with a lot on them; a move handle for small selections; a dot gap setting for dotted lines; a ruler
+2. **Section 16 of the plans (2026-11-15):** the Recent bug on Linux (16a, bug: straight to
+   code), then changing selected strokes from the pen tab, colour/tool options not lingering,
+   a pen outline preview, exact/offset/scaled page patterns with side padding, log paper,
+   finer ruler marks when zoomed, and repeating/dividing parts (needs thinking through).
+3. **Smaller requests** (section 14 of the plans, your list from 2026-10-21; plan each first):
+   performance on really long notes with a lot on them; ~~a move handle for small selections~~
+   (built `cc86af5`); a dot gap setting for dotted lines; a ruler
    transparency slider; locking the ruler to a place in the note; a faster hold to shape option;
    a custom screen density input with a help popup to measure it with a real ruler.
-3. **Customise toolbar** (section 10a): plan once there are more tools.
-4. **Research more tools** (section 11): filling and colour, measuring and constructing, editing
+4. **Customise toolbar** (section 10a): plan once there are more tools.
+5. **Research more tools** (section 11): filling and colour, measuring and constructing, editing
    ink (shapes are done).
 
 Known limitations, accepted for now:
