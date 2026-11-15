@@ -697,6 +697,23 @@ Your report: it "kinda sucks and rarely works". Likely causes, from the code
   decided in section 6).
 - Bug/tuning work: after collecting the scribbles, straight to code.
 
+### 16k. Bug: undo doesn't bring back a deleted picture
+
+Your report (2026-11-15): deleting a picture (or similar) and pressing undo doesn't restore it.
+The undo code does re-add the images of an `erase` step (`EditorState.undo`, `.erase` →
+`.draw`), so the step probably arrives empty or the image doesn't show again:
+
+- Deleting a selection records `select.selectResult.images` itself, the list the selection
+  keeps; if unselecting clears that list afterwards, the undo step has no images left.
+- A removed image is dropped from the `AssetCache` (`removeImage`); when it's added back it
+  has to load again, which may fail for an image that was never saved (a new picture).
+- Also to check: deleting through the image's own menu (`onDeleteImage`), PDFs as page
+  backgrounds, and redo.
+
+Bug: reproduce in a test for each way of deleting (selection, image menu, eraser?), fix,
+straight to code. **Question:** which way did you delete it (selection + delete, or the
+picture's long-press menu), and was it a picture, a PDF page background or something else?
+
 
 ## Order
 
@@ -711,5 +728,6 @@ Your report: it "kinda sucks and rarely works". Likely causes, from the code
    then B (recognising)
 9. Section 14 (smaller requests), each planned first
 10. ~~Rotating a page (section 15)~~ (built)
-11. Section 16 (2026-11-15): 16a (Recent bug) and 16j (scribble to erase) first, then your choice
+11. Section 16 (2026-11-15): the bugs 16a (Recent), 16k (undo of deleted pictures) and 16j
+    (scribble to erase) first, then your choice
     among 16b–16i
